@@ -1,0 +1,33 @@
+[package]
+name = "glitchtip-cli"
+version = "0.1.0"
+edition = "2024"
+description = "Open source CLI for GlitchTip, compatible with sentry-cli"
+license = "MIT"
+
+[[bin]]
+name = "glitchtip-cli"
+path = "src/main.rs"
+
+# Also install as sentry-cli for drop-in compat
+[[bin]]
+name = "sentry-cli"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive", "env"] }
+reqwest = { version = "0.12", features = ["json", "multipart"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+chrono = { version = "0.4", features = ["serde"] }
+dirs = "6"
+flate2 = "1"
+open = "5"
+rpassword = "7"
+urlencoding = "2"
+
+[dev-dependencies]
+mockito = "1"
+tempfile = "3"
