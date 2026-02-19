@@ -1,0 +1,123 @@
+stages:
+  - test
+  - build
+  - release
+
+variables:
+  CARGO_HOME: "${CI_PROJECT_DIR}/.cargo"
+
+# --- Stage 1: Test (every push + MR) ---
+
+test:
+  stage: test
+  image: rust:latest
+  cache:
+    key: rust-cache
+    paths:
+      - .cargo/bin/
+      - .cargo/registry/index/
+      - .cargo/registry/cache/
+      - .cargo/git/db/
+      - target/
+  script:
+    - rustup component add rustfmt clippy
+    - cargo fmt --check
+    - cargo clippy -- -D warnings
+    - cargo test
+
+# --- Stage 2: Build (version tags only) ---
+
+.build-common:
+  stage: build
+  image: rust:latest
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+/'
+  cache:
+    key: rust-cache-${TARGET}
+    paths:
+      - .cargo/bin/
+      - .cargo/registry/index/
+      - .cargo/registry/cache/
+      - .cargo/git/db/
+      - target/
+  script:
+    - rustup target add ${TARGET}
+    - ${SETUP_CMD:-true}
+    - cargo build --release --target ${TARGET}
+    - mkdir -p artifacts
+    - cp target/${TARGET}/release/${BIN_NAME} artifacts/
+  artifacts:
+    paths:
+      - artifacts/
+
+build-linux-x86_64:
+  extends: .build-common
+  variables:
+    TARGET: x86_64-unknown-linux-gnu
+    BIN_NAME: glitchtip-cli
+  after_script:
+    - mv artifacts/glitchtip-cli artifacts/glitchtip-cli-linux-x86_64
+
+build-linux-arm64:
+  extends: .build-common
+  variables:
+    TARGET: aarch64-unknown-linux-gnu
+    BIN_NAME: glitchtip-cli
+    SETUP_CMD: "apt-get update && apt-get install -y gcc-aarch64-linux-gnu"
+  after_script:
+    - mv artifacts/glitchtip-cli artifacts/glitchtip-cli-linux-arm64
+
+build-windows-x86_64:
+  extends: .build-common
+  variables:
+    TARGET: x86_64-pc-windows-gnu
+    BIN_NAME: glitchtip-cli.exe
+    SETUP_CMD: "apt-get update && apt-get install -y gcc-mingw-w64-x86-64"
+  after_script:
+    - mv artifacts/glitchtip-cli.exe artifacts/glitchtip-cli-windows-x86_64.exe
+
+build-macos-arm64:
+  extends: .build-common
+  variables:
+    TARGET: aarch64-apple-darwin
+    BIN_NAME: glitchtip-cli
+    SETUP_CMD: "cargo install cargo-zigbuild && curl -sSf https://ziglang.org/download/0.13.0/zig-linux-x86_64-0.13.0.tar.xz | tar -xJ -C /usr/local && ln -s /usr/local/zig-linux-x86_64-0.13.0/zig /usr/local/bin/zig"
+  script:
+    - rustup target add ${TARGET}
+    - ${SETUP_CMD}
+    - cargo zigbuild --release --target ${TARGET}
+    - mkdir -p artifacts
+    - cp target/${TARGET}/release/${BIN_NAME} artifacts/glitchtip-cli-macos-arm64
+
+# --- Stage 3: Release (version tags only, after builds) ---
+
+release:
+  stage: release
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+/'
+  needs:
+    - job: build-linux-x86_64
+      artifacts: true
+    - job: build-linux-arm64
+      artifacts: true
+    - job: build-windows-x86_64
+      artifacts: true
+    - job: build-macos-arm64
+      artifacts: true
+  script:
+    - echo "Creating release for ${CI_COMMIT_TAG}"
+  release:
+    tag_name: ${CI_COMMIT_TAG}
+    name: "GlitchTip CLI ${CI_COMMIT_TAG}"
+    description: "Release ${CI_COMMIT_TAG}"
+    assets:
+      links:
+        - name: glitchtip-cli-linux-x86_64
+          url: "${CI_PROJECT_URL}/-/jobs/artifacts/${CI_COMMIT_TAG}/raw/artifacts/glitchtip-cli-linux-x86_64?job=build-linux-x86_64"
+        - name: glitchtip-cli-linux-arm64
+          url: "${CI_PROJECT_URL}/-/jobs/artifacts/${CI_COMMIT_TAG}/raw/artifacts/glitchtip-cli-linux-arm64?job=build-linux-arm64"
+        - name: glitchtip-cli-windows-x86_64.exe
+          url: "${CI_PROJECT_URL}/-/jobs/artifacts/${CI_COMMIT_TAG}/raw/artifacts/glitchtip-cli-windows-x86_64.exe?job=build-windows-x86_64"
+        - name: glitchtip-cli-macos-arm64
+          url: "${CI_PROJECT_URL}/-/jobs/artifacts/${CI_COMMIT_TAG}/raw/artifacts/glitchtip-cli-macos-arm64?job=build-macos-arm64"
