@@ -84,9 +84,8 @@ build-macos-arm64:
   variables:
     TARGET: aarch64-apple-darwin
   script:
-    - cargo install cargo-zigbuild
-    - curl -sSf https://ziglang.org/download/0.13.0/zig-linux-x86_64-0.13.0.tar.xz | tar -xJ -C /usr/local
-    - ln -s /usr/local/zig-linux-x86_64-0.13.0/zig /usr/local/bin/zig
+    - command -v cargo-zigbuild || cargo install cargo-zigbuild
+    - command -v zig || (curl -sSf https://ziglang.org/download/0.13.0/zig-linux-x86_64-0.13.0.tar.xz | tar -xJ -C /usr/local && ln -s /usr/local/zig-linux-x86_64-0.13.0/zig /usr/local/bin/zig)
     - rustup target add aarch64-apple-darwin
     - cargo zigbuild --release --target aarch64-apple-darwin
     - mkdir -p artifacts
