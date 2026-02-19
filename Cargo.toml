@@ -1,6 +1,6 @@
 [package]
 name = "glitchtip-cli"
-version = "0.1.0"
+version = "0.0.1"
 edition = "2024"
 description = "Open source CLI for GlitchTip, compatible with sentry-cli"
 license = "MIT"
