@@ -74,6 +74,16 @@ enum Commands {
         #[command(subcommand)]
         command: SourcemapsCommand,
     },
+
+    /// Manage deploys
+    Deploys {
+        /// Release version
+        #[arg(long, short, env = "SENTRY_RELEASE")]
+        release: String,
+
+        #[command(subcommand)]
+        command: DeploysCommand,
+    },
 }
 
 #[derive(Subcommand)]
@@ -122,6 +132,54 @@ enum ReleasesCommand {
         #[arg(long, short = 'D', requires = "raw")]
         delimiter: Option<String>,
     },
+
+    /// Delete a release
+    Delete {
+        /// Release version
+        #[arg(allow_hyphen_values = true)]
+        version: String,
+    },
+
+    /// Set commits for a release
+    #[command(name = "set-commits")]
+    SetCommits {
+        /// Release version
+        #[arg(allow_hyphen_values = true)]
+        version: String,
+
+        /// Automatically discover commits from git history
+        #[arg(long)]
+        auto: bool,
+
+        /// Commit hash (can be specified multiple times)
+        #[arg(long = "commit", short, action = clap::ArgAction::Append)]
+        commits: Vec<String>,
+    },
+}
+
+#[derive(Subcommand)]
+enum DeploysCommand {
+    /// Create a new deploy
+    New {
+        /// Environment name
+        #[arg(long, short)]
+        env: String,
+
+        /// Optional URL for this deploy
+        #[arg(long = "deploy-url", short = 'u')]
+        url: Option<String>,
+
+        /// Deploy start time (ISO 8601)
+        #[arg(long)]
+        started: Option<String>,
+
+        /// Deploy finish time (ISO 8601)
+        #[arg(long)]
+        finished: Option<String>,
+    },
+
+    /// List deploys
+    List,
 }
 
 #[derive(Subcommand)]
@@ -235,6 +293,33 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
                 )
                 .await
             }
+            ReleasesCommand::Delete { version } => {
+                commands::releases::delete(&config, &version).await
+            }
+            ReleasesCommand::SetCommits {
+                version,
+                auto,
+                commits,
+            } => commands::releases::set_commits(&config, &version, auto, &commits).await,
+        },
+        Commands::Deploys { release, command } => match command {
+            DeploysCommand::New {
+                env,
+                url,
+                started,
+                finished,
+            } => {
+                commands::deploys::new_deploy(
+                    &config,
+                    &release,
+                    &env,
+                    url.as_deref(),
+                    started.as_deref(),
+                    finished.as_deref(),
+                )
+                .await
+            }
+            DeploysCommand::List => commands::deploys::list(&config, &release).await,
         },
         Commands::Sourcemaps { command } => match command {
             SourcemapsCommand::Upload {

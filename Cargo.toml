@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 description = "Open source CLI for GlitchTip, compatible with sentry-cli"
 license = "MIT"
+default-run = "glitchtip-cli"
 
 [[bin]]
 name = "glitchtip-cli"

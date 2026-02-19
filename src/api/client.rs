@@ -39,8 +39,9 @@ pub struct UpdateRelease {
 #[derive(Debug, Deserialize)]
 #[allow(dead_code)]
 pub struct ReleaseInfo {
-    #[serde(alias = "shortVersion")]
     pub version: Option<String>,
+    #[serde(alias = "shortVersion")]
+    pub short_version: Option<String>,
     #[serde(alias = "dateCreated")]
     pub date_created: Option<String>,
     #[serde(alias = "dateReleased")]
@@ -102,6 +103,42 @@ pub struct AssembleResponse {
     pub state: String,
     #[serde(alias = "missingChunks", default)]
     pub missing_chunks: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct NewDeploy {
+    pub environment: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
+    #[serde(rename = "dateStarted", skip_serializing_if = "Option::is_none")]
+    pub date_started: Option<String>,
+    #[serde(rename = "dateFinished", skip_serializing_if = "Option::is_none")]
+    pub date_finished: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
+pub struct DeployInfo {
+    pub id: Option<serde_json::Value>,
+    pub environment: Option<String>,
+    pub url: Option<String>,
+    #[serde(alias = "dateStarted")]
+    pub date_started: Option<String>,
+    #[serde(alias = "dateFinished")]
+    pub date_finished: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct Commit {
+    pub id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub message: Option<String>,
+    #[serde(rename = "author_name", skip_serializing_if = "Option::is_none")]
+    pub author_name: Option<String>,
+    #[serde(rename = "author_email", skip_serializing_if = "Option::is_none")]
+    pub author_email: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub timestamp: Option<String>,
 }
 
 impl ApiClient {
@@ -201,7 +238,6 @@ impl ApiClient {
             .with_context(|| format!("Failed to parse response from PUT {url}"))
     }
 
-    #[allow(dead_code)] // Used by Phase 2: releases delete
     pub async fn delete(&self, path: &str) -> Result<()> {
         let url = self.api_url(path);
         let headers = self.default_headers()?;
@@ -295,6 +331,48 @@ impl ApiClient {
             &format!("organizations/{org}/releases/{encoded}/assemble/"),
             request,
         )
+        .await
+    }
+
+    pub async fn delete_release(&self, org: &str, version: &str) -> Result<()> {
+        let encoded = urlencoding::encode(version);
+        self.delete(&format!("organizations/{org}/releases/{encoded}/"))
+            .await
+    }
+
+    pub async fn set_release_commits(
+        &self,
+        org: &str,
+        version: &str,
+        commits: &[Commit],
+    ) -> Result<ReleaseInfo> {
+        let encoded = urlencoding::encode(version);
+        self.post(
+            &format!("organizations/{org}/releases/{encoded}/commits/"),
+            &commits,
+        )
+        .await
+    }
+
+    pub async fn create_deploy(
+        &self,
+        org: &str,
+        version: &str,
+        deploy: &NewDeploy,
+    ) -> Result<DeployInfo> {
+        let encoded = urlencoding::encode(version);
+        self.post(
+            &format!("organizations/{org}/releases/{encoded}/deploys/"),
+            deploy,
+        )
+        .await
+    }
+
+    pub async fn list_deploys(&self, org: &str, version: &str) -> Result<Vec<DeployInfo>> {
+        let encoded = urlencoding::encode(version);
+        self.get(&format!(
+            "organizations/{org}/releases/{encoded}/deploys/"
+        ))
         .await
     }
 }
