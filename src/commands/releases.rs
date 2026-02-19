@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 
 use crate::api::ApiClient;
 use crate::api::client::{Commit, NewRelease, UpdateRelease};
@@ -20,7 +20,7 @@ pub async fn new_release(
     let projects = resolve_projects(config, projects)?;
     let client = ApiClient::from_config(config)?;
 
-    let now = Utc::now().to_rfc3339();
+    let now = DateTime::<Utc>::from(std::time::SystemTime::now()).to_rfc3339();
     let release = NewRelease {
         version: version.to_string(),
         projects,
@@ -60,7 +60,7 @@ pub async fn finalize(
 
     let date_released = Some(match released {
         Some(ts) => ts.to_string(),
-        None => Utc::now().to_rfc3339(),
+        None => DateTime::<Utc>::from(std::time::SystemTime::now()).to_rfc3339(),
     });
 
     let update = UpdateRelease {

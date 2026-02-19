@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 
 use crate::api::ApiClient;
 use crate::api::client::NewDeploy;
@@ -20,7 +20,8 @@ pub async fn new_deploy(
 
     let client = ApiClient::from_config(config)?;
 
-    let now = Utc::now().to_rfc3339();
+    let now: DateTime<Utc> = std::time::SystemTime::now().into();
+    let now = now.to_rfc3339();
     let deploy = NewDeploy {
         environment: environment.to_string(),
         url: url.map(String::from),
