@@ -16,7 +16,7 @@ use clap::{Parser, Subcommand};
 )]
 struct Cli {
     /// Sentry/GlitchTip server URL
-    #[arg(long = "url", global = true, env = "SENTRY_URL")]
+    #[arg(long = "url", env = "SENTRY_URL")]
     url: Option<String>,
 
     /// Auth token
@@ -166,7 +166,7 @@ enum DeploysCommand {
         env: String,
 
         /// Optional URL for this deploy
-        #[arg(long = "deploy-url", short = 'u')]
+        #[arg(long, short = 'u')]
         url: Option<String>,
 
         /// Deploy start time (ISO 8601)
