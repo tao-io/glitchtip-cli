@@ -370,9 +370,7 @@ impl ApiClient {
 
     pub async fn list_deploys(&self, org: &str, version: &str) -> Result<Vec<DeployInfo>> {
         let encoded = urlencoding::encode(version);
-        self.get(&format!(
-            "organizations/{org}/releases/{encoded}/deploys/"
-        ))
-        .await
+        self.get(&format!("organizations/{org}/releases/{encoded}/deploys/"))
+            .await
     }
 }

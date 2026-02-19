@@ -132,7 +132,9 @@ pub async fn list(
     }
 
     for release in &releases {
-        let version = release.short_version.as_deref()
+        let version = release
+            .short_version
+            .as_deref()
             .or(release.version.as_deref())
             .unwrap_or("?");
         let released = release.date_released.as_deref().unwrap_or("(unreleased)");
@@ -214,7 +216,10 @@ pub async fn set_commits(
         return Ok(());
     }
 
-    println!("Setting {} commit(s) for release {version}...", commits.len());
+    println!(
+        "Setting {} commit(s) for release {version}...",
+        commits.len()
+    );
 
     client
         .set_release_commits(org, version, &commits)
