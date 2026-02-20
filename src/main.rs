@@ -75,6 +75,42 @@ enum Commands {
         command: SourcemapsCommand,
     },
 
+    /// Send a test event to GlitchTip
+    #[command(name = "send-event")]
+    SendEvent {
+        /// Event message (can be specified multiple times, joined with newline)
+        #[arg(long, short, action = clap::ArgAction::Append)]
+        message: Vec<String>,
+
+        /// Severity level: debug, info, warning, error, fatal
+        #[arg(long, short, default_value = "error")]
+        level: String,
+
+        /// Release version
+        #[arg(long, short)]
+        release: Option<String>,
+
+        /// Environment name
+        #[arg(long, short = 'E')]
+        env: Option<String>,
+
+        /// Tag in KEY:VALUE format (can be specified multiple times)
+        #[arg(long, short, action = clap::ArgAction::Append)]
+        tag: Vec<String>,
+
+        /// Extra data in KEY:VALUE format (can be specified multiple times)
+        #[arg(long, short = 'e', action = clap::ArgAction::Append)]
+        extra: Vec<String>,
+
+        /// Platform name
+        #[arg(long, default_value = "other")]
+        platform: String,
+
+        /// Fingerprint value (can be specified multiple times)
+        #[arg(long, short, action = clap::ArgAction::Append)]
+        fingerprint: Vec<String>,
+    },
+
     /// Manage deploys
     Deploys {
         /// Release version
@@ -250,6 +286,28 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
             config_status_json,
             no_defaults,
         } => commands::info::execute(&config, config_status_json, no_defaults).await,
+        Commands::SendEvent {
+            message,
+            level,
+            release,
+            env,
+            tag,
+            extra,
+            platform,
+            fingerprint,
+        } => {
+            let opts = commands::send_event::SendEventOptions {
+                message: &message,
+                level: &level,
+                release: release.as_deref(),
+                environment: env.as_deref(),
+                tags: &tag,
+                extra: &extra,
+                platform: &platform,
+                fingerprint: &fingerprint,
+            };
+            commands::send_event::execute(&config, &opts).await
+        }
         Commands::Releases { command } => match command {
             ReleasesCommand::New {
                 version,

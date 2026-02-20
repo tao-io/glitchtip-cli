@@ -10,6 +10,7 @@ const LOCAL_CONFIG_FILES: &[&str] = &[".glitchtip-cli.rc", ".sentryclirc"];
 #[derive(Debug, Clone, Default)]
 pub struct Config {
     pub auth_token: Option<String>,
+    pub dsn: Option<String>,
     pub url: String,
     pub org: Option<String>,
     pub project: Option<String>,
@@ -85,6 +86,9 @@ impl Config {
         if let Ok(val) = std::env::var("SENTRY_LOG_LEVEL") {
             config.log_level = val;
         }
+        if let Ok(val) = std::env::var("SENTRY_DSN") {
+            config.dsn = Some(val);
+        }
 
         // Ensure URL has trailing slash
         if !config.url.ends_with('/') {
@@ -129,10 +133,13 @@ impl Config {
             .with_context(|| format!("Failed to read config file: {}", path.display()))?;
         let sections = parse_ini(&content);
 
-        if let Some(auth) = sections.get("auth")
-            && let Some(token) = auth.get("token")
-        {
-            self.auth_token = Some(token.clone());
+        if let Some(auth) = sections.get("auth") {
+            if let Some(token) = auth.get("token") {
+                self.auth_token = Some(token.clone());
+            }
+            if let Some(dsn) = auth.get("dsn") {
+                self.dsn = Some(dsn.clone());
+            }
         }
         if let Some(defaults) = sections.get("defaults") {
             if let Some(url) = defaults.get("url") {
@@ -340,6 +347,39 @@ token = abc123
     fn test_local_config_path() {
         let path = Config::config_path(false).unwrap();
         assert_eq!(path, PathBuf::from(".sentryclirc"));
+    }
+
+    #[test]
+    fn test_parse_ini_dsn() {
+        let content = r#"
+[auth]
+token=sntrys_xxx
+dsn=https://key@glitchtip.example.com/1
+"#;
+        let sections = parse_ini(content);
+        assert_eq!(sections["auth"]["token"], "sntrys_xxx");
+        assert_eq!(
+            sections["auth"]["dsn"],
+            "https://key@glitchtip.example.com/1"
+        );
+    }
+
+    #[test]
+    fn test_merge_ini_loads_dsn() {
+        let mut config = Config {
+            url: "https://sentry.io/".to_string(),
+            log_level: "warn".to_string(),
+            ..Default::default()
+        };
+        let content = "[auth]\ndsn=https://key@example.com/3\n";
+        let sections = parse_ini(content);
+        // Simulate what merge_ini_file does
+        if let Some(auth) = sections.get("auth") {
+            if let Some(dsn) = auth.get("dsn") {
+                config.dsn = Some(dsn.clone());
+            }
+        }
+        assert_eq!(config.dsn.as_deref(), Some("https://key@example.com/3"));
     }
 
     #[test]

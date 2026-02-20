@@ -3,6 +3,7 @@ use reqwest::header::{AUTHORIZATION, HeaderMap, HeaderValue};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
+use crate::api::dsn::Dsn;
 use crate::config::Config;
 
 #[derive(Debug, Clone)]
@@ -276,6 +277,28 @@ impl ApiClient {
         if !status.is_success() {
             let body = resp.text().await.unwrap_or_default();
             bail!("Chunk upload to {url} returned {status}: {body}");
+        }
+
+        Ok(())
+    }
+
+    /// Send a Sentry envelope using DSN authentication.
+    pub async fn send_envelope(&self, dsn: &Dsn, envelope: &[u8]) -> Result<()> {
+        let url = dsn.envelope_url();
+        let resp = self
+            .client
+            .post(&url)
+            .header("X-Sentry-Auth", dsn.auth_header())
+            .header("Content-Type", "application/x-sentry-envelope")
+            .body(envelope.to_vec())
+            .send()
+            .await
+            .with_context(|| format!("POST {url} failed"))?;
+
+        let status = resp.status();
+        if !status.is_success() {
+            let body = resp.text().await.unwrap_or_default();
+            bail!("POST {url} returned {status}: {body}");
         }
 
         Ok(())
