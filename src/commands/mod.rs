@@ -1,5 +1,6 @@
 pub mod deploys;
 pub mod info;
+pub mod issues;
 pub mod login;
 pub mod organizations;
 pub mod projects;

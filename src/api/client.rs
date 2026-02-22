@@ -75,6 +75,19 @@ pub struct OrganizationInfo {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
+pub struct IssueInfo {
+    pub id: String,
+    pub title: String,
+    #[serde(alias = "shortId")]
+    pub short_id: Option<String>,
+    pub status: Option<String>,
+    pub level: Option<String>,
+    #[serde(alias = "lastSeen")]
+    pub last_seen: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct AuthInfo {
     pub user: Option<UserInfo>,
     pub auth: Option<AuthDetail>,
@@ -416,6 +429,11 @@ impl ApiClient {
     pub async fn list_projects(&self, org: &str) -> Result<Vec<ProjectInfo>> {
         self.get(&format!("organizations/{org}/projects/")).await
     }
+
+    pub async fn list_issues(&self, org: &str, project: &str) -> Result<Vec<IssueInfo>> {
+        self.get(&format!("projects/{org}/{project}/issues/"))
+            .await
+    }
 }
 
 #[cfg(test)]
@@ -478,5 +496,38 @@ mod tests {
         assert_eq!(projects.len(), 1);
         assert_eq!(projects[0].slug, "my-project");
         assert_eq!(projects[0].platform.as_deref(), Some("javascript"));
+    }
+
+    #[tokio::test]
+    async fn test_list_issues() {
+        let mut server = Server::new_async().await;
+        let url = server.url();
+
+        let _m = server
+            .mock("GET", "/api/0/projects/my-org/my-project/issues/")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(r#"[{"id": "42", "title": "TypeError: null is not an object", "shortId": "MY-PROJECT-1", "status": "unresolved", "level": "error", "lastSeen": "2024-01-15T10:30:00Z"}]"#)
+            .create_async()
+            .await;
+
+        let config = Config {
+            url: url.clone(),
+            auth_token: Some("token".to_string()),
+            org: Some("my-org".to_string()),
+            project: Some("my-project".to_string()),
+            log_level: "warn".to_string(),
+            ..Default::default()
+        };
+
+        let client = ApiClient::from_config(&config).unwrap();
+        let issues = client.list_issues("my-org", "my-project").await.unwrap();
+
+        assert_eq!(issues.len(), 1);
+        assert_eq!(issues[0].id, "42");
+        assert_eq!(issues[0].title, "TypeError: null is not an object");
+        assert_eq!(issues[0].short_id.as_deref(), Some("MY-PROJECT-1"));
+        assert_eq!(issues[0].status.as_deref(), Some("unresolved"));
+        assert_eq!(issues[0].level.as_deref(), Some("error"));
     }
 }

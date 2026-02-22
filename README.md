@@ -80,6 +80,7 @@ GlitchTip CLI aims to be a drop-in replacement for the most common sentry-cli wo
 | `organizations list` | Supported | |
 | `projects list` | Supported | |
 | `releases propose-version` | Supported | |
+| `issues list` | Supported | |
 
 ### Not yet supported
 
@@ -88,7 +89,6 @@ These sentry-cli commands are not yet implemented. They are listed roughly in or
 | Command | Notes |
 |---|---|
 | `sourcemaps inject` | Inject debug ID references into source files |
-| `issues list` | List issues for a project |
 | `issues resolve` | Bulk resolve issues (e.g. after deploy) |
 | `issues mute` / `unresolve` | Issue state management |
 | `send-envelope` | Send a pre-built envelope file |

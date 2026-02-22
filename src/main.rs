@@ -132,6 +132,12 @@ enum Commands {
         #[command(subcommand)]
         command: ProjectsCommand,
     },
+
+    /// Manage issues
+    Issues {
+        #[command(subcommand)]
+        command: IssuesCommand,
+    },
 }
 
 #[derive(Subcommand)]
@@ -143,6 +149,12 @@ enum OrganizationsCommand {
 #[derive(Subcommand)]
 enum ProjectsCommand {
     /// List available projects
+    List,
+}
+
+#[derive(Subcommand)]
+enum IssuesCommand {
+    /// List issues for a project
     List,
 }
 
@@ -442,6 +454,9 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
         },
         Commands::Projects { command } => match command {
             ProjectsCommand::List => commands::projects::list(&config).await,
+        },
+        Commands::Issues { command } => match command {
+            IssuesCommand::List => commands::issues::list(&config).await,
         },
     }
 }
