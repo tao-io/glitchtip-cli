@@ -156,6 +156,51 @@ enum ProjectsCommand {
 enum IssuesCommand {
     /// List issues for a project
     List,
+
+    /// Resolve issues
+    Resolve {
+        /// Issue ID to resolve (can be specified multiple times)
+        #[arg(long, short, action = clap::ArgAction::Append)]
+        id: Vec<u64>,
+
+        /// Filter by current status
+        #[arg(long, short)]
+        status: Option<String>,
+
+        /// Apply to all issues
+        #[arg(long, short)]
+        all: bool,
+    },
+
+    /// Mute (ignore) issues
+    Mute {
+        /// Issue ID to mute (can be specified multiple times)
+        #[arg(long, short, action = clap::ArgAction::Append)]
+        id: Vec<u64>,
+
+        /// Filter by current status
+        #[arg(long, short)]
+        status: Option<String>,
+
+        /// Apply to all issues
+        #[arg(long, short)]
+        all: bool,
+    },
+
+    /// Unresolve issues
+    Unresolve {
+        /// Issue ID to unresolve (can be specified multiple times)
+        #[arg(long, short, action = clap::ArgAction::Append)]
+        id: Vec<u64>,
+
+        /// Filter by current status
+        #[arg(long, short)]
+        status: Option<String>,
+
+        /// Apply to all issues
+        #[arg(long, short)]
+        all: bool,
+    },
 }
 
 #[derive(Subcommand)]
@@ -457,6 +502,15 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
         },
         Commands::Issues { command } => match command {
             IssuesCommand::List => commands::issues::list(&config).await,
+            IssuesCommand::Resolve { id, status, all } => {
+                commands::issues::resolve(&config, &id, status.as_deref(), all).await
+            }
+            IssuesCommand::Mute { id, status, all } => {
+                commands::issues::mute(&config, &id, status.as_deref(), all).await
+            }
+            IssuesCommand::Unresolve { id, status, all } => {
+                commands::issues::unresolve(&config, &id, status.as_deref(), all).await
+            }
         },
     }
 }

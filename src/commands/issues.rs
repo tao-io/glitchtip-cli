@@ -1,5 +1,6 @@
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, bail};
 
+use crate::api::client::IssueChanges;
 use crate::api::ApiClient;
 use crate::config::Config;
 
@@ -45,4 +46,82 @@ pub async fn list(config: &Config) -> Result<()> {
     }
 
     Ok(())
+}
+
+fn build_filter_query(ids: &[u64], status: Option<&str>, all: bool) -> Result<String> {
+    if all {
+        return Ok(String::new());
+    }
+
+    let mut parts = Vec::new();
+
+    for id in ids {
+        parts.push(format!("id={id}"));
+    }
+
+    if let Some(s) = status {
+        parts.push(format!("status={s}"));
+    }
+
+    if parts.is_empty() {
+        bail!("No filter specified. Use --id, --status, or --all to select issues.");
+    }
+
+    Ok(parts.join("&"))
+}
+
+async fn update_status(
+    config: &Config,
+    ids: &[u64],
+    status: Option<&str>,
+    all: bool,
+    new_status: &str,
+    action_label: &str,
+) -> Result<()> {
+    let org = config
+        .org
+        .as_deref()
+        .context("Organization not set. Use --org, SENTRY_ORG, or set it in .sentryclirc")?;
+
+    let project = config
+        .project
+        .as_deref()
+        .context("Project not set. Use --project, SENTRY_PROJECT, or set it in .sentryclirc")?;
+
+    let filter_query = build_filter_query(ids, status, all)?;
+
+    let client = ApiClient::from_config(config)?;
+    let changes = IssueChanges {
+        new_status: new_status.to_string(),
+    };
+
+    client
+        .update_issues(org, project, &filter_query, &changes)
+        .await
+        .with_context(|| format!("Failed to {action_label} issues"))?;
+
+    println!("Issues {action_label}d successfully.");
+    Ok(())
+}
+
+pub async fn resolve(
+    config: &Config,
+    ids: &[u64],
+    status: Option<&str>,
+    all: bool,
+) -> Result<()> {
+    update_status(config, ids, status, all, "resolved", "resolve").await
+}
+
+pub async fn mute(config: &Config, ids: &[u64], status: Option<&str>, all: bool) -> Result<()> {
+    update_status(config, ids, status, all, "ignored", "mute").await
+}
+
+pub async fn unresolve(
+    config: &Config,
+    ids: &[u64],
+    status: Option<&str>,
+    all: bool,
+) -> Result<()> {
+    update_status(config, ids, status, all, "unresolved", "unresolve").await
 }

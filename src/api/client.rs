@@ -132,6 +132,12 @@ pub struct AssembleResponse {
 }
 
 #[derive(Debug, Serialize)]
+pub struct IssueChanges {
+    #[serde(rename = "status")]
+    pub new_status: String,
+}
+
+#[derive(Debug, Serialize)]
 pub struct NewDeploy {
     pub environment: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -434,6 +440,18 @@ impl ApiClient {
         self.get(&format!("projects/{org}/{project}/issues/"))
             .await
     }
+
+    pub async fn update_issues(
+        &self,
+        org: &str,
+        project: &str,
+        filter_query: &str,
+        changes: &IssueChanges,
+    ) -> Result<()> {
+        let path = format!("projects/{org}/{project}/issues/?{filter_query}");
+        let _: serde_json::Value = self.put(&path, changes).await?;
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -496,6 +514,38 @@ mod tests {
         assert_eq!(projects.len(), 1);
         assert_eq!(projects[0].slug, "my-project");
         assert_eq!(projects[0].platform.as_deref(), Some("javascript"));
+    }
+
+    #[tokio::test]
+    async fn test_update_issues() {
+        let mut server = Server::new_async().await;
+        let url = server.url();
+
+        let _m = server
+            .mock("PUT", "/api/0/projects/my-org/my-project/issues/?id=42&id=43")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(r#"{"status": "resolved"}"#)
+            .create_async()
+            .await;
+
+        let config = Config {
+            url: url.clone(),
+            auth_token: Some("token".to_string()),
+            org: Some("my-org".to_string()),
+            project: Some("my-project".to_string()),
+            log_level: "warn".to_string(),
+            ..Default::default()
+        };
+
+        let client = ApiClient::from_config(&config).unwrap();
+        let changes = IssueChanges {
+            new_status: "resolved".to_string(),
+        };
+        client
+            .update_issues("my-org", "my-project", "id=42&id=43", &changes)
+            .await
+            .unwrap();
     }
 
     #[tokio::test]
