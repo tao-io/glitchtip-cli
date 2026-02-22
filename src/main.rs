@@ -120,6 +120,30 @@ enum Commands {
         #[command(subcommand)]
         command: DeploysCommand,
     },
+
+    /// Manage organizations
+    Organizations {
+        #[command(subcommand)]
+        command: OrganizationsCommand,
+    },
+
+    /// Manage projects
+    Projects {
+        #[command(subcommand)]
+        command: ProjectsCommand,
+    },
+}
+
+#[derive(Subcommand)]
+enum OrganizationsCommand {
+    /// List available organizations
+    List,
+}
+
+#[derive(Subcommand)]
+enum ProjectsCommand {
+    /// List available projects
+    List,
 }
 
 #[derive(Subcommand)]
@@ -191,6 +215,10 @@ enum ReleasesCommand {
         #[arg(long = "commit", short, action = clap::ArgAction::Append)]
         commits: Vec<String>,
     },
+
+    /// Propose a version name based on git repository
+    #[command(name = "propose-version")]
+    ProposeVersion,
 }
 
 #[derive(Subcommand)]
@@ -359,6 +387,11 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
                 auto,
                 commits,
             } => commands::releases::set_commits(&config, &version, auto, &commits).await,
+            ReleasesCommand::ProposeVersion => {
+                let version = commands::releases::propose_version()?;
+                println!("{version}");
+                Ok(())
+            }
         },
         Commands::Deploys { release, command } => match command {
             DeploysCommand::New {
@@ -403,6 +436,12 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
                 };
                 commands::sourcemaps::upload(&config, &opts).await
             }
+        },
+        Commands::Organizations { command } => match command {
+            OrganizationsCommand::List => commands::organizations::list(&config).await,
+        },
+        Commands::Projects { command } => match command {
+            ProjectsCommand::List => commands::projects::list(&config).await,
         },
     }
 }

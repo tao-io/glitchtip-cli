@@ -231,6 +231,21 @@ pub async fn set_commits(
     Ok(())
 }
 
+pub fn propose_version() -> Result<String> {
+    let output = std::process::Command::new("git")
+        .args(["describe", "--tags", "--always", "--dirty"])
+        .output()
+        .context("Failed to run git describe. Is git installed and is this a git repository?")?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        anyhow::bail!("git describe failed: {stderr}");
+    }
+
+    let version = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    Ok(version)
+}
+
 fn discover_git_commits() -> Result<Vec<Commit>> {
     let output = std::process::Command::new("git")
         .args(["log", "--format=%H%n%an%n%ae%n%s%n%aI%n---", "-20"])
@@ -273,4 +288,76 @@ fn resolve_projects(config: &Config, cli_projects: &[String]) -> Result<Vec<Stri
         return Ok(vec![project.clone()]);
     }
     anyhow::bail!("No project specified. Use --project, SENTRY_PROJECT, or set it in .sentryclirc")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use std::process::Command;
+    use tempfile::tempdir;
+
+    #[test]
+    fn test_propose_version_git() {
+        let dir = tempdir().unwrap();
+        let repo_path = dir.path();
+
+        // Initialize git repo
+        Command::new("git")
+            .arg("init")
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+
+        // Configure git user
+        Command::new("git")
+            .args(["config", "user.email", "you@example.com"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+        Command::new("git")
+            .args(["config", "user.name", "Your Name"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+        // Initial branch name can vary, so we force one
+        Command::new("git")
+            .args(["config", "init.defaultBranch", "main"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+
+        // Create a file and commit it
+        fs::write(repo_path.join("file.txt"), "hello").unwrap();
+        Command::new("git")
+            .args(["add", "file.txt"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+        Command::new("git")
+            .args(["commit", "-m", "initial commit"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+
+        // Tag the commit
+        Command::new("git")
+            .args(["tag", "v1.2.3"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+
+        let old_cwd = std::env::current_dir().unwrap();
+        std::env::set_current_dir(repo_path).unwrap();
+
+        let version = propose_version().unwrap();
+        assert_eq!(version, "v1.2.3");
+
+        // Make it dirty
+        fs::write(repo_path.join("file.txt"), "world").unwrap();
+        let version = propose_version().unwrap();
+        assert!(version.ends_with("-dirty"));
+
+        std::env::set_current_dir(old_cwd).unwrap();
+    }
 }

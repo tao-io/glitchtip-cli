@@ -60,6 +60,18 @@ pub struct ReleaseInfo {
 pub struct ProjectInfo {
     pub name: Option<String>,
     pub slug: String,
+    pub platform: Option<String>,
+    #[serde(alias = "dateCreated")]
+    pub date_created: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
+pub struct OrganizationInfo {
+    pub name: String,
+    pub slug: String,
+    #[serde(alias = "dateCreated")]
+    pub date_created: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -395,5 +407,76 @@ impl ApiClient {
         let encoded = urlencoding::encode(version);
         self.get(&format!("organizations/{org}/releases/{encoded}/deploys/"))
             .await
+    }
+
+    pub async fn list_organizations(&self) -> Result<Vec<OrganizationInfo>> {
+        self.get("organizations/").await
+    }
+
+    pub async fn list_projects(&self, org: &str) -> Result<Vec<ProjectInfo>> {
+        self.get(&format!("organizations/{org}/projects/")).await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use mockito::Server;
+
+    #[tokio::test]
+    async fn test_list_organizations() {
+        let mut server = Server::new_async().await;
+        let url = server.url();
+
+        let _m = server
+            .mock("GET", "/api/0/organizations/")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(r#"[{"name": "My Org", "slug": "my-org", "dateCreated": "2023-01-01T00:00:00Z"}]"#)
+            .create_async()
+            .await;
+
+        let config = Config {
+            url: url.clone(),
+            auth_token: Some("token".to_string()),
+            log_level: "warn".to_string(),
+            ..Default::default()
+        };
+
+        let client = ApiClient::from_config(&config).unwrap();
+        let orgs = client.list_organizations().await.unwrap();
+
+        assert_eq!(orgs.len(), 1);
+        assert_eq!(orgs[0].name, "My Org");
+        assert_eq!(orgs[0].slug, "my-org");
+    }
+
+    #[tokio::test]
+    async fn test_list_projects() {
+        let mut server = Server::new_async().await;
+        let url = server.url();
+
+        let _m = server
+            .mock("GET", "/api/0/organizations/my-org/projects/")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(r#"[{"name": "My Project", "slug": "my-project", "platform": "javascript", "dateCreated": "2023-01-01T00:00:00Z"}]"#)
+            .create_async()
+            .await;
+
+        let config = Config {
+            url: url.clone(),
+            auth_token: Some("token".to_string()),
+            org: Some("my-org".to_string()),
+            log_level: "warn".to_string(),
+            ..Default::default()
+        };
+
+        let client = ApiClient::from_config(&config).unwrap();
+        let projects = client.list_projects("my-org").await.unwrap();
+
+        assert_eq!(projects.len(), 1);
+        assert_eq!(projects[0].slug, "my-project");
+        assert_eq!(projects[0].platform.as_deref(), Some("javascript"));
     }
 }

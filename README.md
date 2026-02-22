@@ -28,8 +28,92 @@ glitchtip-cli releases list
 glitchtip-cli releases new 1.0.0
 glitchtip-cli releases finalize 1.0.0
 glitchtip-cli releases set-commits 1.0.0 --auto
-glitchtip-cli releases deploys new 1.0.0 -e production
+
+# Create deploys
+glitchtip-cli deploys --release 1.0.0 new -e production
+
+# Send a test event (uses SENTRY_DSN)
+glitchtip-cli send-event -m "deploy verification" -l info -E production
 ```
+
+## Configuration
+
+Configuration is loaded in this order (highest priority first):
+
+1. CLI flags (`--url`, `--auth-token`, `--org`, `--project`)
+2. Environment variables (`SENTRY_URL`, `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT`, `SENTRY_DSN`)
+3. Local config file (`.sentryclirc` or `.glitchtip-cli.rc`, searched upward from cwd)
+4. Global config (`~/.config/glitchtip-cli/config`, `~/.config/sentry/sentrycli.ini`, or `~/.sentryclirc`)
+
+Config files use INI format, matching sentry-cli:
+
+```ini
+[auth]
+token=sntrys_xxx
+dsn=https://key@your-glitchtip-instance.com/1
+
+[defaults]
+url=https://your-glitchtip-instance.com
+org=my-org
+project=my-project
+```
+
+## sentry-cli compatibility
+
+GlitchTip CLI aims to be a drop-in replacement for the most common sentry-cli workflows: CI/CD release tracking, sourcemap uploads, and deploy notifications. It reads the same config files, environment variables, and accepts the same flags.
+
+### Supported commands
+
+| Command | Status | Notes |
+|---|---|---|
+| `login` | Supported | Interactive token setup |
+| `info` | Supported | Config and auth status display |
+| `releases new` | Supported | |
+| `releases finalize` | Supported | |
+| `releases list` | Supported | |
+| `releases delete` | Supported | |
+| `releases set-commits` | Supported | `--auto` for git discovery |
+| `sourcemaps upload` | Supported | Chunked upload with gzip |
+| `deploys new` | Supported | |
+| `deploys list` | Supported | |
+| `send-event` | Supported | DSN auth, envelope protocol |
+| `organizations list` | Supported | |
+| `projects list` | Supported | |
+| `releases propose-version` | Supported | |
+
+### Not yet supported
+
+These sentry-cli commands are not yet implemented. They are listed roughly in order of priority.
+
+| Command | Notes |
+|---|---|
+| `sourcemaps inject` | Inject debug ID references into source files |
+| `issues list` | List issues for a project |
+| `issues resolve` | Bulk resolve issues (e.g. after deploy) |
+| `issues mute` / `unresolve` | Issue state management |
+| `send-envelope` | Send a pre-built envelope file |
+
+### Not planned
+
+These sentry-cli commands target use cases that are out of scope, either because they are niche, deprecated, or involve platform-specific toolchains.
+
+| Command | Reason |
+|---|---|
+| `debug-files` | Native debug symbol management (dSYM, Proguard, etc.) |
+| `react-native` | Platform-specific build tool integration |
+| `bash-hook` | Shell error hook; rarely used in practice |
+| `send-metric` | Deprecated in sentry-cli |
+| `update` / `uninstall` | Package manager territory |
+| `sourcemaps explain` | Deprecated in sentry-cli |
+| `releases archive` / `restore` | Not supported by GlitchTip backend |
+
+### Beyond sentry-cli
+
+GlitchTip has features that sentry-cli doesn't cover. We plan to add CLI support for these where it makes sense.
+
+| Feature | Notes |
+|---|---|
+| `monitors` (uptime) | CRUD for GlitchTip's uptime monitors — manage monitoring alongside deploys |
 
 ## License
 
