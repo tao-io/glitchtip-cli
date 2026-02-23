@@ -95,9 +95,15 @@ These sentry-cli commands are not yet implemented. They are listed roughly in or
 |---|---|
 | `logs list` | List and filter log entries; GlitchTip supports logs |
 | `monitors list` / `monitors run` | Cron monitor management and job wrapping |
+| `debug-files upload` | Upload ELF/dSYM/PDB debug symbols |
+| `debug-files check` / `find` / `print-sources` | Inspect and locate debug information files |
+| `debug-files bundle-jvm` | Create source bundles from Java/Kotlin sources |
+| `react-native gradle` | Upload sourcemaps from Android gradle builds |
+| `dart-symbol-map upload` | Upload Dart/Flutter symbol maps for deobfuscation |
+| `releases archive` / `restore` | Toggle release archived status |
+| `releases info` | Print info about a specific release |
 | `events list` | List events for a project |
 | `repos list` | List repositories for an organization |
-| `releases info` | Print info about a specific release |
 | `sourcemaps resolve` | Resolve sourcemap for a given line/column position |
 
 ### Not planned
@@ -106,15 +112,13 @@ These sentry-cli commands target use cases that are out of scope, either because
 
 | Command | Reason |
 |---|---|
-| `debug-files` | Native debug symbol management (dSYM, Proguard, etc.) |
-| `react-native` | Platform-specific build tool integration |
-| `react-native xcode` | macOS-only; platform-specific |
-| `dart-symbol-map` | Dart/Flutter symbol deobfuscation; niche |
+| `react-native xcode` | macOS-only |
+| `react-native appcenter` | Deprecated in sentry-cli |
+| `debug-files bundle-sources` | Primarily for macOS dSYM bundles |
 | `bash-hook` | Shell error hook; rarely used in practice |
 | `send-metric` | Deprecated in sentry-cli |
 | `update` / `uninstall` | Package manager territory |
 | `sourcemaps explain` | Deprecated in sentry-cli |
-| `releases archive` / `restore` | Not supported by GlitchTip backend |
 | `files` | Deprecated in sentry-cli; use `sourcemaps upload` |
 | `upload-dif` / `upload-dsym` / `upload-proguard` | Hidden aliases for `debug-files upload` |
 | `build upload` | Niche build artifact management |
