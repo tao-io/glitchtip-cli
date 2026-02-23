@@ -35,6 +35,8 @@ pub struct UpdateRelease {
     pub url: Option<String>,
     #[serde(rename = "dateReleased", skip_serializing_if = "Option::is_none")]
     pub date_released: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]

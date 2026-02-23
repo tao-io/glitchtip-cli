@@ -300,6 +300,20 @@ enum ReleasesCommand {
         show_commits: bool,
     },
 
+    /// Archive a release
+    Archive {
+        /// Release version
+        #[arg(allow_hyphen_values = true)]
+        version: String,
+    },
+
+    /// Restore an archived release
+    Restore {
+        /// Release version
+        #[arg(allow_hyphen_values = true)]
+        version: String,
+    },
+
     /// Propose a version name based on git repository
     #[command(name = "propose-version")]
     ProposeVersion,
@@ -499,6 +513,12 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
                 show_projects,
                 show_commits,
             } => commands::releases::info(&config, &version, show_projects, show_commits).await,
+            ReleasesCommand::Archive { version } => {
+                commands::releases::archive(&config, &version).await
+            }
+            ReleasesCommand::Restore { version } => {
+                commands::releases::restore(&config, &version).await
+            }
             ReleasesCommand::ProposeVersion => {
                 let version = commands::releases::propose_version()?;
                 println!("{version}");

@@ -82,6 +82,8 @@ GlitchTip CLI aims to be a drop-in replacement for the most common sentry-cli wo
 | `projects list` | Supported | |
 | `releases propose-version` | Supported | |
 | `releases info` | Supported | Version, date, projects, commits |
+| `releases archive` | Supported | |
+| `releases restore` | Supported | |
 | `issues list` | Supported | |
 | `issues resolve` | Supported | Bulk resolve by ID, status, or all |
 | `issues mute` | Supported | Bulk mute (ignore) issues |
@@ -102,7 +104,6 @@ These sentry-cli commands are not yet implemented. They are listed roughly in or
 | `debug-files bundle-jvm` | Create source bundles from Java/Kotlin sources |
 | `react-native gradle` | Upload sourcemaps from Android gradle builds |
 | `dart-symbol-map upload` | Upload Dart/Flutter symbol maps for deobfuscation |
-| `releases archive` / `restore` | Toggle release archived status |
 | `events list` | List events for a project |
 | `repos list` | List repositories for an organization |
 | `sourcemaps resolve` | Resolve sourcemap for a given line/column position |

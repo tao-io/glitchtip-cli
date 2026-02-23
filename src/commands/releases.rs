@@ -139,6 +139,7 @@ pub async fn finalize(
         projects,
         url: url.map(String::from),
         date_released,
+        status: None,
     };
 
     client
@@ -249,6 +250,54 @@ pub async fn delete(config: &Config, version: &str) -> Result<()> {
 
     println!("Deleted release {version}.");
 
+    Ok(())
+}
+
+pub async fn archive(config: &Config, version: &str) -> Result<()> {
+    let org = config
+        .org
+        .as_deref()
+        .context("Organization not set. Use --org, SENTRY_ORG, or set it in .sentryclirc")?;
+
+    let client = ApiClient::from_config(config)?;
+
+    let update = UpdateRelease {
+        projects: None,
+        url: None,
+        date_released: None,
+        status: Some("archived".to_string()),
+    };
+
+    client
+        .update_release(org, version, &update)
+        .await
+        .context("Failed to archive release")?;
+
+    println!("Archived release {version}.");
+    Ok(())
+}
+
+pub async fn restore(config: &Config, version: &str) -> Result<()> {
+    let org = config
+        .org
+        .as_deref()
+        .context("Organization not set. Use --org, SENTRY_ORG, or set it in .sentryclirc")?;
+
+    let client = ApiClient::from_config(config)?;
+
+    let update = UpdateRelease {
+        projects: None,
+        url: None,
+        date_released: None,
+        status: Some("open".to_string()),
+    };
+
+    client
+        .update_release(org, version, &update)
+        .await
+        .context("Failed to restore release")?;
+
+    println!("Restored release {version}.");
     Ok(())
 }
 
