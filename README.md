@@ -81,6 +81,7 @@ GlitchTip CLI aims to be a drop-in replacement for the most common sentry-cli wo
 | `organizations list` | Supported | |
 | `projects list` | Supported | |
 | `releases propose-version` | Supported | |
+| `releases info` | Supported | Version, date, projects, commits |
 | `issues list` | Supported | |
 | `issues resolve` | Supported | Bulk resolve by ID, status, or all |
 | `issues mute` | Supported | Bulk mute (ignore) issues |
@@ -97,11 +98,11 @@ These sentry-cli commands are not yet implemented. They are listed roughly in or
 | `monitors list` / `monitors run` | Cron monitor management and job wrapping |
 | `debug-files upload` | Upload ELF/dSYM/PDB debug symbols |
 | `debug-files check` / `find` / `print-sources` | Inspect and locate debug information files |
+| `debug-files bundle-sources` | Package source files referenced by debug info into ZIP bundles |
 | `debug-files bundle-jvm` | Create source bundles from Java/Kotlin sources |
 | `react-native gradle` | Upload sourcemaps from Android gradle builds |
 | `dart-symbol-map upload` | Upload Dart/Flutter symbol maps for deobfuscation |
 | `releases archive` / `restore` | Toggle release archived status |
-| `releases info` | Print info about a specific release |
 | `events list` | List events for a project |
 | `repos list` | List repositories for an organization |
 | `sourcemaps resolve` | Resolve sourcemap for a given line/column position |
@@ -114,7 +115,6 @@ These sentry-cli commands target use cases that are out of scope, either because
 |---|---|
 | `react-native xcode` | macOS-only |
 | `react-native appcenter` | Deprecated in sentry-cli |
-| `debug-files bundle-sources` | Primarily for macOS dSYM bundles |
 | `bash-hook` | Shell error hook; rarely used in practice |
 | `send-metric` | Deprecated in sentry-cli |
 | `update` / `uninstall` | Package manager territory |
