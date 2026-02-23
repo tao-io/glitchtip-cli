@@ -4,10 +4,7 @@ use crate::api::ApiClient;
 use crate::config::Config;
 
 pub async fn list(config: &Config) -> Result<()> {
-    let org = config
-        .org
-        .as_deref()
-        .context("Organization not set. Use --org, SENTRY_ORG, or set it in .sentryclirc")?;
+    let org = config.get_org()?;
 
     let client = ApiClient::from_config(config)?;
     let mut projects = client

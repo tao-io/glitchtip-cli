@@ -5,15 +5,8 @@ use crate::api::client::IssueChanges;
 use crate::config::Config;
 
 pub async fn list(config: &Config) -> Result<()> {
-    let org = config
-        .org
-        .as_deref()
-        .context("Organization not set. Use --org, SENTRY_ORG, or set it in .sentryclirc")?;
-
-    let project = config
-        .project
-        .as_deref()
-        .context("Project not set. Use --project, SENTRY_PROJECT, or set it in .sentryclirc")?;
+    let org = config.get_org()?;
+    let project = config.get_project()?;
 
     let client = ApiClient::from_config(config)?;
     let mut issues = client
@@ -81,15 +74,8 @@ async fn update_status(
     new_status: &str,
     action_label: &str,
 ) -> Result<()> {
-    let org = config
-        .org
-        .as_deref()
-        .context("Organization not set. Use --org, SENTRY_ORG, or set it in .sentryclirc")?;
-
-    let project = config
-        .project
-        .as_deref()
-        .context("Project not set. Use --project, SENTRY_PROJECT, or set it in .sentryclirc")?;
+    let org = config.get_org()?;
+    let project = config.get_project()?;
 
     let filter_query = build_filter_query(ids, status, all)?;
 

@@ -28,10 +28,7 @@ pub struct UploadOptions<'a> {
 }
 
 pub async fn upload(config: &Config, opts: &UploadOptions<'_>) -> Result<()> {
-    let org = config
-        .org
-        .as_deref()
-        .context("Organization not set. Use --org, SENTRY_ORG, or set it in .sentryclirc")?;
+    let org = config.get_org()?;
 
     let env_release = std::env::var("SENTRY_RELEASE").ok();
     let release_version = opts

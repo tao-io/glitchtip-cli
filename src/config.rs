@@ -128,6 +128,24 @@ impl Config {
         }
     }
 
+    /// Get the configured organization or return a descriptive error.
+    pub fn get_org(&self) -> Result<&str> {
+        self.org.as_deref().ok_or_else(|| {
+            anyhow::anyhow!(
+                "Organization not set. Use --org, SENTRY_ORG, or set it in .sentryclirc"
+            )
+        })
+    }
+
+    /// Get the configured project or return a descriptive error.
+    pub fn get_project(&self) -> Result<&str> {
+        self.project.as_deref().ok_or_else(|| {
+            anyhow::anyhow!(
+                "Project not set. Use --project, SENTRY_PROJECT, or set it in .sentryclirc"
+            )
+        })
+    }
+
     fn merge_ini_file(&mut self, path: &Path) -> Result<()> {
         let content = fs::read_to_string(path)
             .with_context(|| format!("Failed to read config file: {}", path.display()))?;

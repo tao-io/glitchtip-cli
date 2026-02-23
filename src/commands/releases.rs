@@ -11,10 +11,7 @@ pub async fn info(
     show_projects: bool,
     show_commits: bool,
 ) -> Result<()> {
-    let org = config
-        .org
-        .as_deref()
-        .context("Organization not set. Use --org, SENTRY_ORG, or set it in .sentryclirc")?;
+    let org = config.get_org()?;
 
     let client = ApiClient::from_config(config)?;
 
@@ -84,10 +81,7 @@ pub async fn new_release(
     url: Option<&str>,
     finalize: bool,
 ) -> Result<()> {
-    let org = config
-        .org
-        .as_deref()
-        .context("Organization not set. Use --org, SENTRY_ORG, or set it in .sentryclirc")?;
+    let org = config.get_org()?;
 
     let projects = resolve_projects(config, projects)?;
     let client = ApiClient::from_config(config)?;
@@ -122,10 +116,7 @@ pub async fn finalize(
     url: Option<&str>,
     released: Option<&str>,
 ) -> Result<()> {
-    let org = config
-        .org
-        .as_deref()
-        .context("Organization not set. Use --org, SENTRY_ORG, or set it in .sentryclirc")?;
+    let org = config.get_org()?;
 
     let projects = resolve_projects(config, projects).ok();
     let client = ApiClient::from_config(config)?;
@@ -159,10 +150,7 @@ pub async fn list(
     raw: bool,
     delimiter: Option<&str>,
 ) -> Result<()> {
-    let org = config
-        .org
-        .as_deref()
-        .context("Organization not set. Use --org, SENTRY_ORG, or set it in .sentryclirc")?;
+    let org = config.get_org()?;
 
     let client = ApiClient::from_config(config)?;
 
@@ -236,10 +224,7 @@ pub async fn list(
 }
 
 pub async fn delete(config: &Config, version: &str) -> Result<()> {
-    let org = config
-        .org
-        .as_deref()
-        .context("Organization not set. Use --org, SENTRY_ORG, or set it in .sentryclirc")?;
+    let org = config.get_org()?;
 
     let client = ApiClient::from_config(config)?;
 
@@ -254,10 +239,7 @@ pub async fn delete(config: &Config, version: &str) -> Result<()> {
 }
 
 pub async fn archive(config: &Config, version: &str) -> Result<()> {
-    let org = config
-        .org
-        .as_deref()
-        .context("Organization not set. Use --org, SENTRY_ORG, or set it in .sentryclirc")?;
+    let org = config.get_org()?;
 
     let client = ApiClient::from_config(config)?;
 
@@ -278,10 +260,7 @@ pub async fn archive(config: &Config, version: &str) -> Result<()> {
 }
 
 pub async fn restore(config: &Config, version: &str) -> Result<()> {
-    let org = config
-        .org
-        .as_deref()
-        .context("Organization not set. Use --org, SENTRY_ORG, or set it in .sentryclirc")?;
+    let org = config.get_org()?;
 
     let client = ApiClient::from_config(config)?;
 
@@ -307,10 +286,7 @@ pub async fn set_commits(
     auto: bool,
     commits_arg: &[String],
 ) -> Result<()> {
-    let org = config
-        .org
-        .as_deref()
-        .context("Organization not set. Use --org, SENTRY_ORG, or set it in .sentryclirc")?;
+    let org = config.get_org()?;
 
     let client = ApiClient::from_config(config)?;
 

@@ -13,10 +13,7 @@ pub async fn new_deploy(
     started: Option<&str>,
     finished: Option<&str>,
 ) -> Result<()> {
-    let org = config
-        .org
-        .as_deref()
-        .context("Organization not set. Use --org, SENTRY_ORG, or set it in .sentryclirc")?;
+    let org = config.get_org()?;
 
     let client = ApiClient::from_config(config)?;
 
@@ -40,10 +37,7 @@ pub async fn new_deploy(
 }
 
 pub async fn list(config: &Config, version: &str) -> Result<()> {
-    let org = config
-        .org
-        .as_deref()
-        .context("Organization not set. Use --org, SENTRY_ORG, or set it in .sentryclirc")?;
+    let org = config.get_org()?;
 
     let client = ApiClient::from_config(config)?;
 
