@@ -87,6 +87,19 @@ GlitchTip CLI aims to be a drop-in replacement for the most common sentry-cli wo
 | `issues unresolve` | Supported | Bulk unresolve issues |
 | `send-envelope` | Supported | Send a pre-built envelope file |
 
+### Not yet supported
+
+These sentry-cli commands are not yet implemented. They are listed roughly in order of priority.
+
+| Command | Notes |
+|---|---|
+| `logs list` | List and filter log entries; GlitchTip supports logs |
+| `monitors list` / `monitors run` | Cron monitor management and job wrapping |
+| `events list` | List events for a project |
+| `repos list` | List repositories for an organization |
+| `releases info` | Print info about a specific release |
+| `sourcemaps resolve` | Resolve sourcemap for a given line/column position |
+
 ### Not planned
 
 These sentry-cli commands target use cases that are out of scope, either because they are niche, deprecated, or involve platform-specific toolchains.
@@ -95,11 +108,16 @@ These sentry-cli commands target use cases that are out of scope, either because
 |---|---|
 | `debug-files` | Native debug symbol management (dSYM, Proguard, etc.) |
 | `react-native` | Platform-specific build tool integration |
+| `react-native xcode` | macOS-only; platform-specific |
+| `dart-symbol-map` | Dart/Flutter symbol deobfuscation; niche |
 | `bash-hook` | Shell error hook; rarely used in practice |
 | `send-metric` | Deprecated in sentry-cli |
 | `update` / `uninstall` | Package manager territory |
 | `sourcemaps explain` | Deprecated in sentry-cli |
 | `releases archive` / `restore` | Not supported by GlitchTip backend |
+| `files` | Deprecated in sentry-cli; use `sourcemaps upload` |
+| `upload-dif` / `upload-dsym` / `upload-proguard` | Hidden aliases for `debug-files upload` |
+| `build upload` | Niche build artifact management |
 
 ### Beyond sentry-cli
 
@@ -108,6 +126,7 @@ GlitchTip has features that sentry-cli doesn't cover. We plan to add CLI support
 | Feature | Notes |
 |---|---|
 | `monitors` (uptime) | CRUD for GlitchTip's uptime monitors — manage monitoring alongside deploys |
+| `logs list --live` (streaming) | WebSocket-based live log streaming; sentry-cli only supports polling |
 
 ## License
 
