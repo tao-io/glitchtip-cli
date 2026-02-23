@@ -88,6 +88,12 @@ pub struct IssueInfo {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
+pub struct ReleaseCommitInfo {
+    pub id: String,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct AuthInfo {
     pub user: Option<UserInfo>,
     pub auth: Option<AuthDetail>,
@@ -339,6 +345,22 @@ impl ApiClient {
 
     pub async fn get_auth_info(&self) -> Result<AuthInfo> {
         self.get("").await
+    }
+
+    pub async fn get_release(&self, org: &str, version: &str) -> Result<ReleaseInfo> {
+        let encoded = urlencoding::encode(version);
+        self.get(&format!("organizations/{org}/releases/{encoded}/"))
+            .await
+    }
+
+    pub async fn get_release_commits(
+        &self,
+        org: &str,
+        version: &str,
+    ) -> Result<Vec<ReleaseCommitInfo>> {
+        let encoded = urlencoding::encode(version);
+        self.get(&format!("organizations/{org}/releases/{encoded}/commits/"))
+            .await
     }
 
     pub async fn create_release(&self, org: &str, release: &NewRelease) -> Result<ReleaseInfo> {

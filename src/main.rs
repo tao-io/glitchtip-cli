@@ -285,6 +285,21 @@ enum ReleasesCommand {
         commits: Vec<String>,
     },
 
+    /// Print information about a release
+    Info {
+        /// Release version
+        #[arg(allow_hyphen_values = true)]
+        version: String,
+
+        /// Display the projects column
+        #[arg(long = "show-projects", short = 'P')]
+        show_projects: bool,
+
+        /// Display the commits column
+        #[arg(long = "show-commits", short = 'C')]
+        show_commits: bool,
+    },
+
     /// Propose a version name based on git repository
     #[command(name = "propose-version")]
     ProposeVersion,
@@ -479,6 +494,11 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
                 auto,
                 commits,
             } => commands::releases::set_commits(&config, &version, auto, &commits).await,
+            ReleasesCommand::Info {
+                version,
+                show_projects,
+                show_commits,
+            } => commands::releases::info(&config, &version, show_projects, show_commits).await,
             ReleasesCommand::ProposeVersion => {
                 let version = commands::releases::propose_version()?;
                 println!("{version}");

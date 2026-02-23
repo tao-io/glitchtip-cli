@@ -5,6 +5,78 @@ use crate::api::ApiClient;
 use crate::api::client::{Commit, NewRelease, UpdateRelease};
 use crate::config::Config;
 
+pub async fn info(
+    config: &Config,
+    version: &str,
+    show_projects: bool,
+    show_commits: bool,
+) -> Result<()> {
+    let org = config
+        .org
+        .as_deref()
+        .context("Organization not set. Use --org, SENTRY_ORG, or set it in .sentryclirc")?;
+
+    let client = ApiClient::from_config(config)?;
+
+    let release = client
+        .get_release(org, version)
+        .await
+        .context("Failed to get release")?;
+
+    let version_str = release
+        .short_version
+        .as_deref()
+        .or(release.version.as_deref())
+        .unwrap_or("?");
+    let date_created = release.date_created.as_deref().unwrap_or("-");
+
+    // Build header
+    let mut header = format!("{:<30} {:<24}", "Version", "Date created");
+    if release.last_event.is_some() {
+        header.push_str(&format!(" {:<24}", "Last event"));
+    }
+    if show_projects {
+        header.push_str(&format!(" {:<20}", "Projects"));
+    }
+    if show_commits {
+        header.push_str(&format!(" {:<20}", "Commits"));
+    }
+    println!("{header}");
+
+    // Build data row
+    let mut row = format!("{:<30} {:<24}", version_str, date_created);
+    if let Some(ref last_event) = release.last_event {
+        row.push_str(&format!(" {:<24}", last_event));
+    }
+    if show_projects {
+        let projects_str: String = release
+            .projects
+            .iter()
+            .map(|p| p.slug.as_str())
+            .collect::<Vec<_>>()
+            .join(", ");
+        if projects_str.is_empty() {
+            row.push_str(&format!(" {:<20}", "-"));
+        } else {
+            row.push_str(&format!(" {:<20}", projects_str));
+        }
+    }
+    if show_commits {
+        match client.get_release_commits(org, version).await {
+            Ok(commits) if !commits.is_empty() => {
+                let ids: Vec<&str> = commits.iter().map(|c| c.id.as_str()).collect();
+                row.push_str(&format!(" {}", ids.join(", ")));
+            }
+            _ => {
+                row.push_str(&format!(" {:<20}", "-"));
+            }
+        }
+    }
+    println!("{row}");
+
+    Ok(())
+}
+
 pub async fn new_release(
     config: &Config,
     version: &str,
