@@ -437,8 +437,7 @@ impl ApiClient {
     }
 
     pub async fn list_issues(&self, org: &str, project: &str) -> Result<Vec<IssueInfo>> {
-        self.get(&format!("projects/{org}/{project}/issues/"))
-            .await
+        self.get(&format!("projects/{org}/{project}/issues/")).await
     }
 
     pub async fn update_issues(
@@ -468,7 +467,9 @@ mod tests {
             .mock("GET", "/api/0/organizations/")
             .with_status(200)
             .with_header("content-type", "application/json")
-            .with_body(r#"[{"name": "My Org", "slug": "my-org", "dateCreated": "2023-01-01T00:00:00Z"}]"#)
+            .with_body(
+                r#"[{"name": "My Org", "slug": "my-org", "dateCreated": "2023-01-01T00:00:00Z"}]"#,
+            )
             .create_async()
             .await;
 
@@ -522,7 +523,10 @@ mod tests {
         let url = server.url();
 
         let _m = server
-            .mock("PUT", "/api/0/projects/my-org/my-project/issues/?id=42&id=43")
+            .mock(
+                "PUT",
+                "/api/0/projects/my-org/my-project/issues/?id=42&id=43",
+            )
             .with_status(200)
             .with_header("content-type", "application/json")
             .with_body(r#"{"status": "resolved"}"#)

@@ -348,10 +348,7 @@ fn extract_sourcemap_url(source: &str) -> Option<&str> {
 }
 
 fn resolve_sourcemap_path(source_path: &Path, url: &str) -> PathBuf {
-    source_path
-        .parent()
-        .unwrap_or(Path::new("."))
-        .join(url)
+    source_path.parent().unwrap_or(Path::new(".")).join(url)
 }
 
 fn has_debug_id(source: &str) -> bool {
@@ -512,13 +509,11 @@ pub fn inject(
     let source_files: Vec<&PathBuf> = files
         .iter()
         .filter(|f| {
-            f.extension()
-                .and_then(|e| e.to_str())
-                .is_some_and(|ext| {
-                    SOURCE_EXTENSIONS
-                        .iter()
-                        .any(|e| e.eq_ignore_ascii_case(ext))
-                })
+            f.extension().and_then(|e| e.to_str()).is_some_and(|ext| {
+                SOURCE_EXTENSIONS
+                    .iter()
+                    .any(|e| e.eq_ignore_ascii_case(ext))
+            })
         })
         .collect();
 
@@ -698,7 +693,8 @@ mod tests {
 
     #[test]
     fn test_extract_sourcemap_url_last_wins() {
-        let source = "//# sourceMappingURL=first.map\nvar x = 1;\n//# sourceMappingURL=second.map\n";
+        let source =
+            "//# sourceMappingURL=first.map\nvar x = 1;\n//# sourceMappingURL=second.map\n";
         assert_eq!(extract_sourcemap_url(source), Some("second.map"));
     }
 
@@ -728,12 +724,18 @@ mod tests {
 
     #[test]
     fn test_extract_use_directive_simple() {
-        assert_eq!(extract_use_directive("\"use strict\";\nvar x;"), "\"use strict\"");
+        assert_eq!(
+            extract_use_directive("\"use strict\";\nvar x;"),
+            "\"use strict\""
+        );
     }
 
     #[test]
     fn test_extract_use_directive_single_quotes() {
-        assert_eq!(extract_use_directive("'use strict';\nvar x;"), "'use strict'");
+        assert_eq!(
+            extract_use_directive("'use strict';\nvar x;"),
+            "'use strict'"
+        );
     }
 
     #[test]
@@ -825,7 +827,10 @@ mod tests {
             .unwrap();
         assert!(sm_idx < dbg_idx);
         // The snippet should be before the sourceMappingURL
-        let snippet_idx = lines.iter().position(|l| l.starts_with("!function()")).unwrap();
+        let snippet_idx = lines
+            .iter()
+            .position(|l| l.starts_with("!function()"))
+            .unwrap();
         assert!(snippet_idx < sm_idx);
     }
 

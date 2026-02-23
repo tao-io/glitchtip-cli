@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use anyhow::Result;
 use serde_json::json;
 
-use crate::api::dsn::Dsn;
 use crate::api::ApiClient;
+use crate::api::dsn::Dsn;
 use crate::config::Config;
 
 pub struct SendEventOptions<'a> {

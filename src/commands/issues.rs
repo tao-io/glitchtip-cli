@@ -1,7 +1,7 @@
 use anyhow::{Context, Result, bail};
 
-use crate::api::client::IssueChanges;
 use crate::api::ApiClient;
+use crate::api::client::IssueChanges;
 use crate::config::Config;
 
 pub async fn list(config: &Config) -> Result<()> {
@@ -42,7 +42,10 @@ pub async fn list(config: &Config) -> Result<()> {
         };
         let status = issue.status.as_deref().unwrap_or("-");
         let level = issue.level.as_deref().unwrap_or("-");
-        println!("{:<20} {:<50} {:<15} {:<10}", short_id, title, status, level);
+        println!(
+            "{:<20} {:<50} {:<15} {:<10}",
+            short_id, title, status, level
+        );
     }
 
     Ok(())
@@ -104,12 +107,7 @@ async fn update_status(
     Ok(())
 }
 
-pub async fn resolve(
-    config: &Config,
-    ids: &[u64],
-    status: Option<&str>,
-    all: bool,
-) -> Result<()> {
+pub async fn resolve(config: &Config, ids: &[u64], status: Option<&str>, all: bool) -> Result<()> {
     update_status(config, ids, status, all, "resolved", "resolve").await
 }
 
