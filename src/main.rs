@@ -111,6 +111,18 @@ enum Commands {
         fingerprint: Vec<String>,
     },
 
+    /// Send a pre-built envelope file to GlitchTip
+    #[command(name = "send-envelope")]
+    SendEnvelope {
+        /// Path to the envelope file
+        #[arg(value_name = "PATH")]
+        path: PathBuf,
+
+        /// Send without validating envelope contents
+        #[arg(long)]
+        raw: bool,
+    },
+
     /// Manage deploys
     Deploys {
         /// Release version
@@ -411,6 +423,10 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
                 fingerprint: &fingerprint,
             };
             commands::send_event::execute(&config, &opts).await
+        }
+        Commands::SendEnvelope { path, raw } => {
+            let opts = commands::send_envelope::SendEnvelopeOptions { path: &path, raw };
+            commands::send_envelope::execute(&config, &opts).await
         }
         Commands::Releases { command } => match command {
             ReleasesCommand::New {

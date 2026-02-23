@@ -85,14 +85,7 @@ GlitchTip CLI aims to be a drop-in replacement for the most common sentry-cli wo
 | `issues resolve` | Supported | Bulk resolve by ID, status, or all |
 | `issues mute` | Supported | Bulk mute (ignore) issues |
 | `issues unresolve` | Supported | Bulk unresolve issues |
-
-### Not yet supported
-
-These sentry-cli commands are not yet implemented. They are listed roughly in order of priority.
-
-| Command | Notes |
-|---|---|
-| `send-envelope` | Send a pre-built envelope file |
+| `send-envelope` | Supported | Send a pre-built envelope file |
 
 ### Not planned
 
