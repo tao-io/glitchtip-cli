@@ -89,6 +89,7 @@ GlitchTip CLI aims to be a drop-in replacement for the most common sentry-cli wo
 | `issues mute` | Supported | Bulk mute (ignore) issues |
 | `issues unresolve` | Supported | Bulk unresolve issues |
 | `send-envelope` | Supported | Send a pre-built envelope file |
+| `events list` | Supported | With `--show-user` and `--show-tags` |
 
 ### Not yet supported
 
@@ -104,7 +105,6 @@ These sentry-cli commands are not yet implemented. They are listed roughly in or
 | `debug-files bundle-jvm` | Create source bundles from Java/Kotlin sources |
 | `react-native gradle` | Upload sourcemaps from Android gradle builds |
 | `dart-symbol-map upload` | Upload Dart/Flutter symbol maps for deobfuscation |
-| `events list` | List events for a project |
 | `repos list` | List repositories for an organization |
 | `sourcemaps resolve` | Resolve sourcemap for a given line/column position |
 

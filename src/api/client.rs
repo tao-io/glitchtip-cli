@@ -96,6 +96,59 @@ pub struct ReleaseCommitInfo {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
+pub struct EventInfo {
+    #[serde(alias = "eventID")]
+    pub event_id: String,
+    #[serde(default, alias = "dateCreated")]
+    pub date_created: String,
+    #[serde(default)]
+    pub title: String,
+    pub user: Option<EventUserInfo>,
+    pub tags: Option<Vec<EventTagInfo>>,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
+pub struct EventUserInfo {
+    pub id: Option<String>,
+    pub username: Option<String>,
+    pub email: Option<String>,
+    pub ip_address: Option<String>,
+}
+
+impl std::fmt::Display for EventUserInfo {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        if let Some(ref username) = self.username {
+            return write!(f, "{username}");
+        }
+        if let Some(ref email) = self.email {
+            return write!(f, "{email}");
+        }
+        if let Some(ref id) = self.id {
+            return write!(f, "ID:{id}");
+        }
+        if let Some(ref ip) = self.ip_address {
+            return write!(f, "{ip}");
+        }
+        write!(f, "-")
+    }
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
+pub struct EventTagInfo {
+    pub key: String,
+    pub value: String,
+}
+
+impl std::fmt::Display for EventTagInfo {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}: {}", self.key, self.value)
+    }
+}
+
+#[derive(Debug, Deserialize)]
 pub struct AuthInfo {
     pub user: Option<UserInfo>,
     pub auth: Option<AuthDetail>,
@@ -458,6 +511,10 @@ impl ApiClient {
 
     pub async fn list_projects(&self, org: &str) -> Result<Vec<ProjectInfo>> {
         self.get(&format!("organizations/{org}/projects/")).await
+    }
+
+    pub async fn list_events(&self, org: &str, project: &str) -> Result<Vec<EventInfo>> {
+        self.get(&format!("projects/{org}/{project}/events/")).await
     }
 
     pub async fn list_issues(&self, org: &str, project: &str) -> Result<Vec<IssueInfo>> {

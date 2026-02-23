@@ -150,6 +150,12 @@ enum Commands {
         #[command(subcommand)]
         command: IssuesCommand,
     },
+
+    /// Manage events
+    Events {
+        #[command(subcommand)]
+        command: EventsCommand,
+    },
 }
 
 #[derive(Subcommand)]
@@ -212,6 +218,20 @@ enum IssuesCommand {
         /// Apply to all issues
         #[arg(long, short)]
         all: bool,
+    },
+}
+
+#[derive(Subcommand)]
+enum EventsCommand {
+    /// List events for a project
+    List {
+        /// Display the user column
+        #[arg(long = "show-user", short = 'U')]
+        show_user: bool,
+
+        /// Display the tags column
+        #[arg(long = "show-tags", short = 'T')]
+        show_tags: bool,
     },
 }
 
@@ -583,6 +603,12 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
         },
         Commands::Projects { command } => match command {
             ProjectsCommand::List => commands::projects::list(&config).await,
+        },
+        Commands::Events { command } => match command {
+            EventsCommand::List {
+                show_user,
+                show_tags,
+            } => commands::events::list(&config, show_user, show_tags).await,
         },
         Commands::Issues { command } => match command {
             IssuesCommand::List => commands::issues::list(&config).await,

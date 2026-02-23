@@ -1,4 +1,5 @@
 pub mod deploys;
+pub mod events;
 pub mod info;
 pub mod issues;
 pub mod login;
