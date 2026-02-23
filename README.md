@@ -74,6 +74,7 @@ GlitchTip CLI aims to be a drop-in replacement for the most common sentry-cli wo
 | `releases delete` | Supported | |
 | `releases set-commits` | Supported | `--auto` for git discovery |
 | `sourcemaps upload` | Supported | Chunked upload with gzip |
+| `sourcemaps inject` | Supported | Inject debug IDs into source files and sourcemaps |
 | `deploys new` | Supported | |
 | `deploys list` | Supported | |
 | `send-event` | Supported | DSN auth, envelope protocol |
@@ -91,7 +92,6 @@ These sentry-cli commands are not yet implemented. They are listed roughly in or
 
 | Command | Notes |
 |---|---|
-| `sourcemaps inject` | Inject debug ID references into source files |
 | `send-envelope` | Send a pre-built envelope file |
 
 ### Not planned

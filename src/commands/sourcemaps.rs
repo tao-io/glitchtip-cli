@@ -8,6 +8,11 @@ use crate::api::client::AssembleRequest;
 use crate::config::Config;
 
 const DEFAULT_EXTENSIONS: &[&str] = &["js", "cjs", "mjs", "map", "jsbundle", "bundle"];
+const SOURCE_EXTENSIONS: &[&str] = &["js", "cjs", "mjs", "jsbundle", "bundle"];
+
+const CODE_SNIPPET_TEMPLATE: &str = r#"!function(){try{var e="undefined"!=typeof window?window:"undefined"!=typeof global?global:"undefined"!=typeof globalThis?globalThis:"undefined"!=typeof self?self:{},n=(new e.Error).stack;n&&(e._sentryDebugIds=e._sentryDebugIds||{},e._sentryDebugIds[n]="__SENTRY_DEBUG_ID__")}catch(e){}}();"#;
+const DEBUGID_PLACEHOLDER: &str = "__SENTRY_DEBUG_ID__";
+const DEBUGID_COMMENT_PREFIX: &str = "//# debugId";
 
 pub struct UploadOptions<'a> {
     pub paths: &'a [PathBuf],
@@ -312,6 +317,298 @@ fn resolve_projects(config: &Config, cli_projects: &[String]) -> Result<Vec<Stri
     anyhow::bail!("No project specified. Use --project, SENTRY_PROJECT, or set it in .sentryclirc")
 }
 
+// --- sourcemaps inject helpers ---
+
+fn debug_id_from_bytes_hashed(bytes: &[u8]) -> uuid::Uuid {
+    let hash = sha1_digest(bytes);
+    let mut sha1_bytes = [0u8; 16];
+    sha1_bytes.copy_from_slice(&hash[..16]);
+    uuid::Builder::from_sha1_bytes(sha1_bytes).into_uuid()
+}
+
+fn extract_sourcemap_url(source: &str) -> Option<&str> {
+    source.lines().rev().find_map(|line| {
+        let url = line
+            .strip_prefix("//# sourceMappingURL=")
+            .or_else(|| line.strip_prefix("//@ sourceMappingURL="))?;
+        // Strip query string and fragment
+        let url = url.split('?').next().unwrap_or(url);
+        let url = url.split('#').next().unwrap_or(url);
+        let url = url.trim();
+        // Skip data: and remote URLs
+        if url.is_empty()
+            || url.starts_with("data:")
+            || url.starts_with("http://")
+            || url.starts_with("https://")
+        {
+            return None;
+        }
+        Some(url)
+    })
+}
+
+fn resolve_sourcemap_path(source_path: &Path, url: &str) -> PathBuf {
+    source_path
+        .parent()
+        .unwrap_or(Path::new("."))
+        .join(url)
+}
+
+fn has_debug_id(source: &str) -> bool {
+    source.lines().any(|line| line.starts_with("//# debugId="))
+}
+
+fn extract_use_directive(source: &str) -> &str {
+    let bytes = source.as_bytes();
+    let mut pos = 0;
+
+    // Skip leading whitespace and comments
+    loop {
+        while pos < bytes.len() && bytes[pos].is_ascii_whitespace() {
+            pos += 1;
+        }
+        if pos >= bytes.len() {
+            return "";
+        }
+        if pos + 1 < bytes.len() && bytes[pos] == b'/' && bytes[pos + 1] == b'/' {
+            // Line comment
+            pos += 2;
+            while pos < bytes.len() && bytes[pos] != b'\n' && bytes[pos] != b'\r' {
+                pos += 1;
+            }
+            continue;
+        }
+        if pos + 1 < bytes.len() && bytes[pos] == b'/' && bytes[pos + 1] == b'*' {
+            // Block comment
+            pos += 2;
+            loop {
+                if pos + 1 >= bytes.len() {
+                    return "";
+                }
+                if bytes[pos] == b'*' && bytes[pos + 1] == b'/' {
+                    pos += 2;
+                    break;
+                }
+                pos += 1;
+            }
+            continue;
+        }
+        break;
+    }
+
+    // Check for use directive: "use ..." or 'use ...'
+    if pos < bytes.len() && (bytes[pos] == b'"' || bytes[pos] == b'\'') {
+        let quote = bytes[pos];
+        let start = pos;
+        pos += 1;
+        while pos < bytes.len() && bytes[pos] != quote {
+            pos += 1;
+        }
+        if pos < bytes.len() {
+            pos += 1; // include closing quote
+            let candidate = &source[start..pos];
+            let inner = &candidate[1..candidate.len() - 1];
+            if inner.starts_with("use ") {
+                return candidate;
+            }
+        }
+    }
+
+    ""
+}
+
+fn inject_at_start(source: &str, debug_id: uuid::Uuid) -> String {
+    // Split off hashbang if present
+    let (hashbang, rest) = if source.starts_with("#!") {
+        match source.find('\n') {
+            Some(i) => (&source[..i + 1], &source[i + 1..]),
+            None => (source, ""),
+        }
+    } else {
+        ("", source)
+    };
+
+    let use_directive = extract_use_directive(rest);
+    let use_prefix = if use_directive.is_empty() {
+        String::new()
+    } else {
+        format!("{use_directive};")
+    };
+
+    let snippet = CODE_SNIPPET_TEMPLATE.replace(DEBUGID_PLACEHOLDER, &debug_id.to_string());
+    let debug_id_comment = format!("{DEBUGID_COMMENT_PREFIX}={debug_id}");
+
+    format!("{hashbang}{use_prefix}{snippet}\n{rest}\n{debug_id_comment}\n")
+}
+
+fn inject_at_end(source: &str, debug_id: uuid::Uuid) -> String {
+    let mut lines: Vec<&str> = source.lines().collect();
+
+    // Find and remove the last sourceMappingURL comment
+    let sourcemap_comment_idx = lines.iter().rposition(|line| {
+        line.starts_with("//# sourceMappingURL=") || line.starts_with("//@ sourceMappingURL=")
+    });
+    let sourcemap_comment = sourcemap_comment_idx.map(|idx| lines.remove(idx));
+
+    let snippet = CODE_SNIPPET_TEMPLATE.replace(DEBUGID_PLACEHOLDER, &debug_id.to_string());
+    let debug_id_comment = format!("{DEBUGID_COMMENT_PREFIX}={debug_id}");
+
+    let mut result = String::new();
+    for line in &lines {
+        result.push_str(line);
+        result.push('\n');
+    }
+    result.push_str(&snippet);
+    result.push('\n');
+    if let Some(comment) = sourcemap_comment {
+        result.push_str(comment);
+        result.push('\n');
+    }
+    result.push_str(&debug_id_comment);
+    result.push('\n');
+
+    result
+}
+
+fn inject_sourcemap_debug_id(map_content: &str, debug_id: uuid::Uuid) -> Result<String> {
+    let mut map: serde_json::Value =
+        serde_json::from_str(map_content).context("Failed to parse sourcemap JSON")?;
+
+    // Prepend ";" to mappings to shift all lines by 1
+    if let Some(serde_json::Value::String(mappings)) = map.get_mut("mappings") {
+        mappings.insert(0, ';');
+    }
+
+    // Add debug_id field
+    map["debug_id"] = serde_json::Value::String(debug_id.to_string());
+
+    serde_json::to_string(&map).context("Failed to serialize sourcemap JSON")
+}
+
+pub fn inject(
+    paths: &[PathBuf],
+    extensions: &[String],
+    ignore: &[String],
+    dry_run: bool,
+) -> Result<()> {
+    let exts: Vec<&str> = if extensions.is_empty() {
+        DEFAULT_EXTENSIONS.to_vec()
+    } else {
+        // Always include .map for sourcemap discovery
+        let mut e: Vec<&str> = extensions.iter().map(|s| s.as_str()).collect();
+        if !e.iter().any(|ext| ext.eq_ignore_ascii_case("map")) {
+            e.push("map");
+        }
+        e
+    };
+
+    let files = discover_files(paths, &exts, ignore)?;
+
+    if files.is_empty() {
+        println!("No files found.");
+        return Ok(());
+    }
+
+    let source_files: Vec<&PathBuf> = files
+        .iter()
+        .filter(|f| {
+            f.extension()
+                .and_then(|e| e.to_str())
+                .is_some_and(|ext| {
+                    SOURCE_EXTENSIONS
+                        .iter()
+                        .any(|e| e.eq_ignore_ascii_case(ext))
+                })
+        })
+        .collect();
+
+    println!("Found {} JavaScript file(s)", source_files.len());
+
+    let mut injected = 0;
+    let mut already_has_debug_id = 0;
+
+    for source_path in &source_files {
+        let source = std::fs::read_to_string(source_path)
+            .with_context(|| format!("Failed to read {}", source_path.display()))?;
+
+        if has_debug_id(&source) {
+            already_has_debug_id += 1;
+            continue;
+        }
+
+        // Try to find corresponding sourcemap
+        let sourcemap_path = extract_sourcemap_url(&source)
+            .map(|url| resolve_sourcemap_path(source_path, url))
+            .filter(|p| p.is_file())
+            .or_else(|| {
+                // Fallback: try <file>.map
+                let ext = source_path
+                    .extension()
+                    .unwrap_or_default()
+                    .to_string_lossy();
+                let map_path = source_path.with_extension(format!("{ext}.map"));
+                if map_path.is_file() {
+                    Some(map_path)
+                } else {
+                    None
+                }
+            });
+
+        if let Some(ref map_path) = sourcemap_path {
+            // Has sourcemap: hash sourcemap → debug ID, inject at start
+            let map_bytes = std::fs::read(map_path)
+                .with_context(|| format!("Failed to read {}", map_path.display()))?;
+            let debug_id = debug_id_from_bytes_hashed(&map_bytes);
+            let map_content = String::from_utf8(map_bytes)
+                .with_context(|| format!("Invalid UTF-8 in {}", map_path.display()))?;
+
+            let new_source = inject_at_start(&source, debug_id);
+            let new_map = inject_sourcemap_debug_id(&map_content, debug_id)?;
+
+            if dry_run {
+                println!(
+                    "  [dry-run] {} (debug_id: {}, sourcemap: {})",
+                    source_path.display(),
+                    debug_id,
+                    map_path.display()
+                );
+            } else {
+                std::fs::write(source_path, &new_source)
+                    .with_context(|| format!("Failed to write {}", source_path.display()))?;
+                std::fs::write(map_path, &new_map)
+                    .with_context(|| format!("Failed to write {}", map_path.display()))?;
+            }
+        } else {
+            // No sourcemap: hash source → debug ID, inject at end
+            let debug_id = debug_id_from_bytes_hashed(source.as_bytes());
+
+            let new_source = inject_at_end(&source, debug_id);
+
+            if dry_run {
+                println!(
+                    "  [dry-run] {} (debug_id: {}, no sourcemap)",
+                    source_path.display(),
+                    debug_id
+                );
+            } else {
+                std::fs::write(source_path, &new_source)
+                    .with_context(|| format!("Failed to write {}", source_path.display()))?;
+            }
+        }
+
+        injected += 1;
+    }
+
+    println!();
+    println!("Source map injection complete.");
+    println!("  Injected: {injected} file(s)");
+    if already_has_debug_id > 0 {
+        println!("  Skipped (already injected): {already_has_debug_id} file(s)");
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -348,5 +645,203 @@ mod tests {
         let mut decompressed = String::new();
         decoder.read_to_string(&mut decompressed).unwrap();
         assert_eq!(decompressed, "hello world");
+    }
+
+    // --- inject helper tests ---
+
+    #[test]
+    fn test_debug_id_from_bytes_hashed_deterministic() {
+        let id1 = debug_id_from_bytes_hashed(b"test");
+        let id2 = debug_id_from_bytes_hashed(b"test");
+        assert_eq!(id1, id2);
+        // SHA1("test") = a94a8fe5ccb19ba61c4c0873d391e987...
+        // First 16 bytes with UUID v5 version/variant bits applied
+        assert_eq!(id1.to_string(), "a94a8fe5-ccb1-5ba6-9c4c-0873d391e987");
+    }
+
+    #[test]
+    fn test_debug_id_from_bytes_hashed_different_inputs() {
+        let id1 = debug_id_from_bytes_hashed(b"hello");
+        let id2 = debug_id_from_bytes_hashed(b"world");
+        assert_ne!(id1, id2);
+    }
+
+    #[test]
+    fn test_extract_sourcemap_url_basic() {
+        let source = "var x = 1;\n//# sourceMappingURL=app.js.map\n";
+        assert_eq!(extract_sourcemap_url(source), Some("app.js.map"));
+    }
+
+    #[test]
+    fn test_extract_sourcemap_url_query_string() {
+        let source = "var x = 1;\n//# sourceMappingURL=app.js.map?v=123\n";
+        assert_eq!(extract_sourcemap_url(source), Some("app.js.map"));
+    }
+
+    #[test]
+    fn test_extract_sourcemap_url_fragment() {
+        let source = "var x = 1;\n//# sourceMappingURL=app.js.map#hash\n";
+        assert_eq!(extract_sourcemap_url(source), Some("app.js.map"));
+    }
+
+    #[test]
+    fn test_extract_sourcemap_url_data_uri() {
+        let source = "var x = 1;\n//# sourceMappingURL=data:application/json;base64,abc\n";
+        assert_eq!(extract_sourcemap_url(source), None);
+    }
+
+    #[test]
+    fn test_extract_sourcemap_url_remote() {
+        let source = "var x = 1;\n//# sourceMappingURL=https://example.com/app.js.map\n";
+        assert_eq!(extract_sourcemap_url(source), None);
+    }
+
+    #[test]
+    fn test_extract_sourcemap_url_last_wins() {
+        let source = "//# sourceMappingURL=first.map\nvar x = 1;\n//# sourceMappingURL=second.map\n";
+        assert_eq!(extract_sourcemap_url(source), Some("second.map"));
+    }
+
+    #[test]
+    fn test_extract_sourcemap_url_legacy_prefix() {
+        let source = "var x = 1;\n//@ sourceMappingURL=app.js.map\n";
+        assert_eq!(extract_sourcemap_url(source), Some("app.js.map"));
+    }
+
+    #[test]
+    fn test_extract_sourcemap_url_none() {
+        let source = "var x = 1;\n";
+        assert_eq!(extract_sourcemap_url(source), None);
+    }
+
+    #[test]
+    fn test_has_debug_id_true() {
+        let source = "var x = 1;\n//# debugId=abc-123\n";
+        assert!(has_debug_id(source));
+    }
+
+    #[test]
+    fn test_has_debug_id_false() {
+        let source = "var x = 1;\n";
+        assert!(!has_debug_id(source));
+    }
+
+    #[test]
+    fn test_extract_use_directive_simple() {
+        assert_eq!(extract_use_directive("\"use strict\";\nvar x;"), "\"use strict\"");
+    }
+
+    #[test]
+    fn test_extract_use_directive_single_quotes() {
+        assert_eq!(extract_use_directive("'use strict';\nvar x;"), "'use strict'");
+    }
+
+    #[test]
+    fn test_extract_use_directive_with_leading_comment() {
+        assert_eq!(
+            extract_use_directive("// comment\n\"use strict\";\nvar x;"),
+            "\"use strict\""
+        );
+    }
+
+    #[test]
+    fn test_extract_use_directive_with_block_comment() {
+        assert_eq!(
+            extract_use_directive("/* block */\"use strict\";\nvar x;"),
+            "\"use strict\""
+        );
+    }
+
+    #[test]
+    fn test_extract_use_directive_none() {
+        assert_eq!(extract_use_directive("var x = 1;"), "");
+    }
+
+    #[test]
+    fn test_extract_use_directive_not_use() {
+        assert_eq!(extract_use_directive("\"hello world\";\nvar x;"), "");
+    }
+
+    #[test]
+    fn test_inject_at_start_simple() {
+        let debug_id: uuid::Uuid = "a94a8fe5-ccb1-5ba6-9c4c-0873d391e987".parse().unwrap();
+        let source = "var x = 1;\n";
+        let result = inject_at_start(source, debug_id);
+
+        assert!(result.starts_with("!function()"));
+        assert!(result.contains("a94a8fe5-ccb1-5ba6-9c4c-0873d391e987"));
+        assert!(result.contains("var x = 1;"));
+        assert!(result.contains("//# debugId=a94a8fe5-ccb1-5ba6-9c4c-0873d391e987"));
+    }
+
+    #[test]
+    fn test_inject_at_start_hashbang() {
+        let debug_id: uuid::Uuid = "a94a8fe5-ccb1-5ba6-9c4c-0873d391e987".parse().unwrap();
+        let source = "#!/usr/bin/node\nvar x = 1;\n";
+        let result = inject_at_start(source, debug_id);
+
+        assert!(result.starts_with("#!/usr/bin/node\n"));
+        // Snippet comes after hashbang
+        let after_hashbang = &result["#!/usr/bin/node\n".len()..];
+        assert!(after_hashbang.starts_with("!function()"));
+    }
+
+    #[test]
+    fn test_inject_at_start_use_strict() {
+        let debug_id: uuid::Uuid = "a94a8fe5-ccb1-5ba6-9c4c-0873d391e987".parse().unwrap();
+        let source = "\"use strict\";\nvar x = 1;\n";
+        let result = inject_at_start(source, debug_id);
+
+        // Use directive should be prepended to snippet
+        assert!(result.starts_with("\"use strict\";!function()"));
+    }
+
+    #[test]
+    fn test_inject_at_end_simple() {
+        let debug_id: uuid::Uuid = "a94a8fe5-ccb1-5ba6-9c4c-0873d391e987".parse().unwrap();
+        let source = "var x = 1;\n";
+        let result = inject_at_end(source, debug_id);
+
+        assert!(result.starts_with("var x = 1;\n"));
+        assert!(result.contains("!function()"));
+        assert!(result.ends_with("//# debugId=a94a8fe5-ccb1-5ba6-9c4c-0873d391e987\n"));
+    }
+
+    #[test]
+    fn test_inject_at_end_moves_sourcemap_url() {
+        let debug_id: uuid::Uuid = "a94a8fe5-ccb1-5ba6-9c4c-0873d391e987".parse().unwrap();
+        let source = "var x = 1;\n//# sourceMappingURL=app.js.map\n";
+        let result = inject_at_end(source, debug_id);
+
+        // sourceMappingURL should be after the snippet, before debugId
+        let lines: Vec<&str> = result.lines().collect();
+        let sm_idx = lines
+            .iter()
+            .position(|l| l.starts_with("//# sourceMappingURL="))
+            .unwrap();
+        let dbg_idx = lines
+            .iter()
+            .position(|l| l.starts_with("//# debugId="))
+            .unwrap();
+        assert!(sm_idx < dbg_idx);
+        // The snippet should be before the sourceMappingURL
+        let snippet_idx = lines.iter().position(|l| l.starts_with("!function()")).unwrap();
+        assert!(snippet_idx < sm_idx);
+    }
+
+    #[test]
+    fn test_inject_sourcemap_debug_id() {
+        let debug_id: uuid::Uuid = "a94a8fe5-ccb1-5ba6-9c4c-0873d391e987".parse().unwrap();
+        let map = r#"{"version":3,"sources":[],"mappings":"AAAA"}"#;
+        let result = inject_sourcemap_debug_id(map, debug_id).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
+
+        // Mappings should have ";" prepended
+        assert_eq!(parsed["mappings"].as_str().unwrap(), ";AAAA");
+        // debug_id should be set
+        assert_eq!(
+            parsed["debug_id"].as_str().unwrap(),
+            "a94a8fe5-ccb1-5ba6-9c4c-0873d391e987"
+        );
     }
 }

@@ -339,6 +339,25 @@ enum SourcemapsCommand {
         #[arg(long = "no-rewrite")]
         no_rewrite: bool,
     },
+
+    /// Inject debug IDs into source files and sourcemaps
+    Inject {
+        /// Paths to search for source files
+        #[arg(required = true)]
+        paths: Vec<PathBuf>,
+
+        /// File extensions to consider
+        #[arg(long = "ext", short = 'x', action = clap::ArgAction::Append)]
+        extensions: Vec<String>,
+
+        /// Ignore patterns
+        #[arg(long, short = 'i', action = clap::ArgAction::Append)]
+        ignore: Vec<String>,
+
+        /// Show what would be done without writing files
+        #[arg(long = "dry-run")]
+        dry_run: bool,
+    },
 }
 
 #[tokio::main]
@@ -492,6 +511,15 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
                     no_rewrite,
                 };
                 commands::sourcemaps::upload(&config, &opts).await
+            }
+            SourcemapsCommand::Inject {
+                paths,
+                extensions,
+                ignore,
+                dry_run,
+            } => {
+                commands::sourcemaps::inject(&paths, &extensions, &ignore, dry_run)?;
+                Ok(())
             }
         },
         Commands::Organizations { command } => match command {
