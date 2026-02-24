@@ -11,11 +11,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
-#[command(
-    name = "glitchtip-cli",
-    about = "CLI for GlitchTip",
-    version
-)]
+#[command(name = "glitchtip-cli", about = "CLI for GlitchTip", version)]
 struct Cli {
     /// Sentry/GlitchTip server URL
     #[arg(long = "url", env = "SENTRY_URL")]
