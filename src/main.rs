@@ -13,7 +13,7 @@ use clap::{Parser, Subcommand};
 #[derive(Parser)]
 #[command(
     name = "glitchtip-cli",
-    about = "CLI for GlitchTip (sentry-cli compatible)",
+    about = "CLI for GlitchTip",
     version
 )]
 struct Cli {

@@ -2,17 +2,11 @@
 name = "glitchtip-cli"
 version = "0.0.1"
 edition = "2024"
-description = "Open source CLI for GlitchTip, compatible with sentry-cli"
+description = "Open source CLI for GlitchTip"
 license = "MIT"
-default-run = "glitchtip-cli"
 
 [[bin]]
 name = "glitchtip-cli"
-path = "src/main.rs"
-
-# Also install as sentry-cli for drop-in compat
-[[bin]]
-name = "sentry-cli"
 path = "src/main.rs"
 
 [dependencies]

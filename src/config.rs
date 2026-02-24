@@ -29,7 +29,7 @@ fn global_config_paths() -> Vec<PathBuf> {
         paths.push(config_dir.join("glitchtip-cli").join("config"));
     }
 
-    // 2. sentry-cli compat: ~/.config/sentry/sentrycli.ini
+    // 2. Legacy: ~/.config/sentry/sentrycli.ini
     if let Some(config_dir) = dirs::config_dir() {
         paths.push(config_dir.join("sentry").join("sentrycli.ini"));
     }
@@ -216,7 +216,7 @@ impl Config {
 
     /// Get the path where login should save the token.
     /// Global: ~/.config/glitchtip-cli/config
-    /// Local: .sentryclirc (sentry-cli compat for existing CI scripts)
+    /// Local: .sentryclirc
     pub fn config_path(global: bool) -> Result<PathBuf> {
         if global {
             let config_dir = dirs::config_dir().context("Could not determine config directory")?;

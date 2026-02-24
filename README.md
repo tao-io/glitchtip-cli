@@ -1,6 +1,6 @@
 # GlitchTip CLI
 
-Open source CLI for [GlitchTip](https://glitchtip.com), compatible with sentry-cli.
+Open source CLI for [GlitchTip](https://glitchtip.com).
 
 > **Warning:** This project is not yet stable. The API and behavior may change without notice until version 1.0.
 
@@ -12,7 +12,7 @@ Download a binary from the [releases page](https://gitlab.com/glitchtip/glitchti
 cargo install --path .
 ```
 
-This installs two binaries: `glitchtip-cli` and `sentry-cli` (drop-in compatibility alias).
+This installs the `glitchtip-cli` binary.
 
 ## Usage
 
@@ -45,7 +45,7 @@ Configuration is loaded in this order (highest priority first):
 3. Local config file (`.sentryclirc` or `.glitchtip-cli.rc`, searched upward from cwd)
 4. Global config (`~/.config/glitchtip-cli/config`, `~/.config/sentry/sentrycli.ini`, or `~/.sentryclirc`)
 
-Config files use INI format, matching sentry-cli:
+Config files use INI format:
 
 ```ini
 [auth]
@@ -58,11 +58,7 @@ org=my-org
 project=my-project
 ```
 
-## sentry-cli compatibility
-
-GlitchTip CLI aims to be a drop-in replacement for the most common sentry-cli workflows: CI/CD release tracking, sourcemap uploads, and deploy notifications. It reads the same config files, environment variables, and accepts the same flags.
-
-### Supported commands
+## Supported commands
 
 | Command | Status | Notes |
 |---|---|---|
@@ -93,7 +89,7 @@ GlitchTip CLI aims to be a drop-in replacement for the most common sentry-cli wo
 
 ### Not yet supported
 
-These sentry-cli commands are not yet implemented. They are listed roughly in order of priority.
+These commands are not yet implemented, listed roughly in order of priority.
 
 | Command | Notes |
 |---|---|
@@ -110,28 +106,28 @@ These sentry-cli commands are not yet implemented. They are listed roughly in or
 
 ### Not planned
 
-These sentry-cli commands target use cases that are out of scope, either because they are niche, deprecated, or involve platform-specific toolchains.
+These commands are out of scope, either because they are niche, deprecated, or involve platform-specific toolchains.
 
 | Command | Reason |
 |---|---|
 | `react-native xcode` | macOS-only |
-| `react-native appcenter` | Deprecated in sentry-cli |
+| `react-native appcenter` | Deprecated |
 | `bash-hook` | Shell error hook; rarely used in practice |
-| `send-metric` | Deprecated in sentry-cli |
+| `send-metric` | Deprecated |
 | `update` / `uninstall` | Package manager territory |
-| `sourcemaps explain` | Deprecated in sentry-cli |
-| `files` | Deprecated in sentry-cli; use `sourcemaps upload` |
+| `sourcemaps explain` | Deprecated |
+| `files` | Deprecated; use `sourcemaps upload` |
 | `upload-dif` / `upload-dsym` / `upload-proguard` | Hidden aliases for `debug-files upload` |
 | `build upload` | Niche build artifact management |
 
-### Beyond sentry-cli
+### GlitchTip-specific
 
-GlitchTip has features that sentry-cli doesn't cover. We plan to add CLI support for these where it makes sense.
+Features unique to GlitchTip that we plan to add CLI support for.
 
 | Feature | Notes |
 |---|---|
 | `monitors` (uptime) | CRUD for GlitchTip's uptime monitors — manage monitoring alongside deploys |
-| `logs list --live` (streaming) | WebSocket-based live log streaming; sentry-cli only supports polling |
+| `logs list --live` (streaming) | WebSocket-based live log streaming |
 
 ## License
 
