@@ -448,45 +448,45 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
     );
 
     // Refresh OAuth token at startup if needed (and no explicit --auth-token)
-    if cli.auth_token.is_none() {
-        if let Some(oauth_tokens) = &config.oauth {
-            let now = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_secs();
-            // Refresh if token expires within 60 seconds
-            if oauth_tokens.expires_at <= now + 60 {
-                let http_client = reqwest::Client::new();
-                match oauth::refresh_tokens(
-                    &oauth_tokens.token_endpoint,
-                    &oauth_tokens.refresh_token,
-                    &oauth_tokens.client_id,
-                    &http_client,
-                )
-                .await
-                {
-                    Ok(response) => {
-                        let new_tokens = oauth::OAuthTokens {
-                            access_token: response.access_token.clone(),
-                            refresh_token: response
-                                .refresh_token
-                                .unwrap_or_else(|| oauth_tokens.refresh_token.clone()),
-                            client_id: oauth_tokens.client_id.clone(),
-                            expires_at: now + response.expires_in.unwrap_or(3600),
-                            scopes: response
-                                .scope
-                                .unwrap_or_else(|| oauth_tokens.scopes.clone()),
-                            token_endpoint: oauth_tokens.token_endpoint.clone(),
-                        };
-                        // Best-effort save — don't fail the command if save fails
-                        let path = config::Config::config_path(true).unwrap_or_default();
-                        let _ = config::Config::save_oauth_tokens(&path, &new_tokens);
-                        config.auth_token = Some(response.access_token);
-                        config.oauth = Some(new_tokens);
-                    }
-                    Err(e) => {
-                        eprintln!("Warning: failed to refresh OAuth token: {e}");
-                    }
+    if cli.auth_token.is_none()
+        && let Some(oauth_tokens) = &config.oauth
+    {
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+        // Refresh if token expires within 60 seconds
+        if oauth_tokens.expires_at <= now + 60 {
+            let http_client = reqwest::Client::new();
+            match oauth::refresh_tokens(
+                &oauth_tokens.token_endpoint,
+                &oauth_tokens.refresh_token,
+                &oauth_tokens.client_id,
+                &http_client,
+            )
+            .await
+            {
+                Ok(response) => {
+                    let new_tokens = oauth::OAuthTokens {
+                        access_token: response.access_token.clone(),
+                        refresh_token: response
+                            .refresh_token
+                            .unwrap_or_else(|| oauth_tokens.refresh_token.clone()),
+                        client_id: oauth_tokens.client_id.clone(),
+                        expires_at: now + response.expires_in.unwrap_or(3600),
+                        scopes: response
+                            .scope
+                            .unwrap_or_else(|| oauth_tokens.scopes.clone()),
+                        token_endpoint: oauth_tokens.token_endpoint.clone(),
+                    };
+                    // Best-effort save — don't fail the command if save fails
+                    let path = config::Config::config_path(true).unwrap_or_default();
+                    let _ = config::Config::save_oauth_tokens(&path, &new_tokens);
+                    config.auth_token = Some(response.access_token);
+                    config.oauth = Some(new_tokens);
+                }
+                Err(e) => {
+                    eprintln!("Warning: failed to refresh OAuth token: {e}");
                 }
             }
         }

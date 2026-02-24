@@ -184,8 +184,8 @@ impl Config {
             self.log_level = level.clone();
         }
 
-        if let Some(oauth) = sections.get("oauth") {
-            if let (
+        if let Some(oauth) = sections.get("oauth")
+            && let (
                 Some(access_token),
                 Some(refresh_token),
                 Some(client_id),
@@ -197,18 +197,17 @@ impl Config {
                 oauth.get("client_id"),
                 oauth.get("expires_at"),
                 oauth.get("token_endpoint"),
-            ) {
-                if let Ok(expires_at) = expires_at.parse::<u64>() {
-                    self.oauth = Some(OAuthTokens {
-                        access_token: access_token.clone(),
-                        refresh_token: refresh_token.clone(),
-                        client_id: client_id.clone(),
-                        expires_at,
-                        scopes: oauth.get("scopes").cloned().unwrap_or_default(),
-                        token_endpoint: token_endpoint.clone(),
-                    });
-                }
-            }
+            )
+            && let Ok(expires_at) = expires_at.parse::<u64>()
+        {
+            self.oauth = Some(OAuthTokens {
+                access_token: access_token.clone(),
+                refresh_token: refresh_token.clone(),
+                client_id: client_id.clone(),
+                expires_at,
+                scopes: oauth.get("scopes").cloned().unwrap_or_default(),
+                token_endpoint: token_endpoint.clone(),
+            });
         }
 
         Ok(())
