@@ -1,10 +1,12 @@
 mod api;
 mod commands;
 mod config;
+mod oauth;
 mod utils;
 
 use std::path::PathBuf;
 use std::process;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use clap::{Parser, Subcommand};
 
@@ -50,6 +52,10 @@ enum Commands {
         /// Store token globally (~/.sentryclirc) instead of locally
         #[arg(long, short)]
         global: bool,
+
+        /// Login method: "token" (paste an API token) or "oauth" (browser-based OAuth)
+        #[arg(long, default_value = "token")]
+        method: String,
     },
 
     /// Show configuration and auth status
@@ -445,8 +451,55 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
         cli.log_level.as_deref(),
     );
 
+    // Refresh OAuth token at startup if needed (and no explicit --auth-token)
+    if cli.auth_token.is_none() {
+        if let Some(oauth_tokens) = &config.oauth {
+            let now = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs();
+            // Refresh if token expires within 60 seconds
+            if oauth_tokens.expires_at <= now + 60 {
+                let http_client = reqwest::Client::new();
+                match oauth::refresh_tokens(
+                    &oauth_tokens.token_endpoint,
+                    &oauth_tokens.refresh_token,
+                    &oauth_tokens.client_id,
+                    &http_client,
+                )
+                .await
+                {
+                    Ok(response) => {
+                        let new_tokens = oauth::OAuthTokens {
+                            access_token: response.access_token.clone(),
+                            refresh_token: response
+                                .refresh_token
+                                .unwrap_or_else(|| oauth_tokens.refresh_token.clone()),
+                            client_id: oauth_tokens.client_id.clone(),
+                            expires_at: now + response.expires_in.unwrap_or(3600),
+                            scopes: response
+                                .scope
+                                .unwrap_or_else(|| oauth_tokens.scopes.clone()),
+                            token_endpoint: oauth_tokens.token_endpoint.clone(),
+                        };
+                        // Best-effort save — don't fail the command if save fails
+                        let path = config::Config::config_path(true).unwrap_or_default();
+                        let _ = config::Config::save_oauth_tokens(&path, &new_tokens);
+                        config.auth_token = Some(response.access_token);
+                        config.oauth = Some(new_tokens);
+                    }
+                    Err(e) => {
+                        eprintln!("Warning: failed to refresh OAuth token: {e}");
+                    }
+                }
+            }
+        }
+    }
+
     match cli.command {
-        Commands::Login { global } => commands::login::execute(&config, global).await,
+        Commands::Login { global, method } => {
+            commands::login::execute(&config, global, &method).await
+        }
         Commands::Info {
             config_status_json,
             no_defaults,

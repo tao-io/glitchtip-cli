@@ -55,7 +55,11 @@ pub async fn execute(config: &Config, config_status_json: bool, no_defaults: boo
     match client.get_auth_info().await {
         Ok(auth_info) => {
             println!("Authentication Info:");
-            println!("  Method: Auth Token");
+            if config.oauth.is_some() {
+                println!("  Method: OAuth");
+            } else {
+                println!("  Method: Auth Token");
+            }
             if let Some(user) = &auth_info.user
                 && let Some(email) = &user.email
             {
@@ -87,7 +91,11 @@ async fn print_json(config: &Config) -> Result<()> {
     let mut auth_type = "none".to_string();
 
     if has_token {
-        auth_type = "token".to_string();
+        auth_type = if config.oauth.is_some() {
+            "oauth".to_string()
+        } else {
+            "token".to_string()
+        };
         let client = ApiClient::from_config(config)?;
         auth_successful = client.get_auth_info().await.is_ok();
     }

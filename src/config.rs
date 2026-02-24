@@ -4,6 +4,8 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
 
+use crate::oauth::OAuthTokens;
+
 /// Local config filenames, searched upward from cwd (higher priority first)
 const LOCAL_CONFIG_FILES: &[&str] = &[".glitchtip-cli.rc", ".sentryclirc"];
 
@@ -15,6 +17,7 @@ pub struct Config {
     pub org: Option<String>,
     pub project: Option<String>,
     pub log_level: String,
+    pub oauth: Option<OAuthTokens>,
 }
 
 /// Return global config paths in priority order (highest first).
@@ -70,7 +73,12 @@ impl Config {
             }
         }
 
-        // Env vars override config files
+        // OAuth tokens from config files override regular auth tokens
+        if let Some(oauth) = &config.oauth {
+            config.auth_token = Some(oauth.access_token.clone());
+        }
+
+        // Env vars override config files (including OAuth)
         if let Ok(val) = std::env::var("SENTRY_AUTH_TOKEN") {
             config.auth_token = Some(val);
         }
@@ -176,6 +184,33 @@ impl Config {
             self.log_level = level.clone();
         }
 
+        if let Some(oauth) = sections.get("oauth") {
+            if let (
+                Some(access_token),
+                Some(refresh_token),
+                Some(client_id),
+                Some(expires_at),
+                Some(token_endpoint),
+            ) = (
+                oauth.get("access_token"),
+                oauth.get("refresh_token"),
+                oauth.get("client_id"),
+                oauth.get("expires_at"),
+                oauth.get("token_endpoint"),
+            ) {
+                if let Ok(expires_at) = expires_at.parse::<u64>() {
+                    self.oauth = Some(OAuthTokens {
+                        access_token: access_token.clone(),
+                        refresh_token: refresh_token.clone(),
+                        client_id: client_id.clone(),
+                        expires_at,
+                        scopes: oauth.get("scopes").cloned().unwrap_or_default(),
+                        token_endpoint: token_endpoint.clone(),
+                    });
+                }
+            }
+        }
+
         Ok(())
     }
 
@@ -213,6 +248,53 @@ impl Config {
         let mut sections = parse_ini(&content);
         let auth = sections.entry("auth".to_string()).or_default();
         auth.insert("token".to_string(), token.to_string());
+
+        let output = write_ini(&sections);
+        fs::write(path, output).with_context(|| format!("Failed to write {}", path.display()))?;
+
+        // Set permissions to 0o600 on Unix
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(path, fs::Permissions::from_mode(0o600))?;
+        }
+
+        Ok(())
+    }
+
+    /// Save OAuth tokens to config file, creating parent dirs if needed.
+    pub fn save_oauth_tokens(path: &Path, tokens: &OAuthTokens) -> Result<()> {
+        // Create parent directories if they don't exist
+        if let Some(parent) = path.parent()
+            && !parent.as_os_str().is_empty()
+            && !parent.exists()
+        {
+            fs::create_dir_all(parent)
+                .with_context(|| format!("Failed to create {}", parent.display()))?;
+        }
+
+        let mut content = String::new();
+
+        // Read existing content if file exists
+        if path.exists() {
+            content = fs::read_to_string(path)
+                .with_context(|| format!("Failed to read {}", path.display()))?;
+        }
+
+        let mut sections = parse_ini(&content);
+
+        // Remove any existing [auth] token so OAuth is the sole auth source
+        if let Some(auth) = sections.get_mut("auth") {
+            auth.remove("token");
+        }
+
+        let oauth = sections.entry("oauth".to_string()).or_default();
+        oauth.insert("access_token".to_string(), tokens.access_token.clone());
+        oauth.insert("refresh_token".to_string(), tokens.refresh_token.clone());
+        oauth.insert("client_id".to_string(), tokens.client_id.clone());
+        oauth.insert("expires_at".to_string(), tokens.expires_at.to_string());
+        oauth.insert("scopes".to_string(), tokens.scopes.clone());
+        oauth.insert("token_endpoint".to_string(), tokens.token_endpoint.clone());
 
         let output = write_ini(&sections);
         fs::write(path, output).with_context(|| format!("Failed to write {}", path.display()))?;
@@ -398,6 +480,59 @@ dsn=https://key@glitchtip.example.com/1
             }
         }
         assert_eq!(config.dsn.as_deref(), Some("https://key@example.com/3"));
+    }
+
+    #[test]
+    fn test_parse_ini_oauth_section() {
+        let content = r#"
+[oauth]
+access_token=abc123
+refresh_token=def456
+client_id=my-client
+expires_at=1700000000
+scopes=org:read project:read
+token_endpoint=https://example.com/token
+"#;
+        let mut config = Config {
+            url: "https://sentry.io/".to_string(),
+            log_level: "warn".to_string(),
+            ..Default::default()
+        };
+        let sections = parse_ini(content);
+        // Simulate merge_ini_file oauth parsing
+        if let Some(oauth) = sections.get("oauth") {
+            if let (
+                Some(access_token),
+                Some(refresh_token),
+                Some(client_id),
+                Some(expires_at),
+                Some(token_endpoint),
+            ) = (
+                oauth.get("access_token"),
+                oauth.get("refresh_token"),
+                oauth.get("client_id"),
+                oauth.get("expires_at"),
+                oauth.get("token_endpoint"),
+            ) {
+                if let Ok(expires_at) = expires_at.parse::<u64>() {
+                    config.oauth = Some(OAuthTokens {
+                        access_token: access_token.clone(),
+                        refresh_token: refresh_token.clone(),
+                        client_id: client_id.clone(),
+                        expires_at,
+                        scopes: oauth.get("scopes").cloned().unwrap_or_default(),
+                        token_endpoint: token_endpoint.clone(),
+                    });
+                }
+            }
+        }
+        let oauth = config.oauth.unwrap();
+        assert_eq!(oauth.access_token, "abc123");
+        assert_eq!(oauth.refresh_token, "def456");
+        assert_eq!(oauth.client_id, "my-client");
+        assert_eq!(oauth.expires_at, 1700000000);
+        assert_eq!(oauth.scopes, "org:read project:read");
+        assert_eq!(oauth.token_endpoint, "https://example.com/token");
     }
 
     #[test]
