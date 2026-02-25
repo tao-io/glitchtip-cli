@@ -578,11 +578,7 @@ impl ApiClient {
         self.get(&format!("organizations/{org}/monitors/")).await
     }
 
-    pub async fn heartbeat_check(
-        &self,
-        org: &str,
-        endpoint_id: &str,
-    ) -> Result<MonitorCheckInfo> {
+    pub async fn heartbeat_check(&self, org: &str, endpoint_id: &str) -> Result<MonitorCheckInfo> {
         self.post_unauthenticated(
             &format!("organizations/{org}/heartbeat_check/{endpoint_id}/"),
             &serde_json::Value::Object(serde_json::Map::new()),
@@ -777,9 +773,7 @@ mod tests {
         let _m = server
             .mock(
                 "POST",
-                &*format!(
-                    "/api/0/organizations/my-org/heartbeat_check/{endpoint_id}/"
-                ),
+                &*format!("/api/0/organizations/my-org/heartbeat_check/{endpoint_id}/"),
             )
             .with_status(200)
             .with_header("content-type", "application/json")
@@ -796,16 +790,10 @@ mod tests {
         };
 
         let client = ApiClient::from_config(&config).unwrap();
-        let check = client
-            .heartbeat_check("my-org", endpoint_id)
-            .await
-            .unwrap();
+        let check = client.heartbeat_check("my-org", endpoint_id).await.unwrap();
 
         assert_eq!(check.is_up, Some(true));
-        assert_eq!(
-            check.start_check.as_deref(),
-            Some("2024-01-15T10:30:00Z")
-        );
+        assert_eq!(check.start_check.as_deref(), Some("2024-01-15T10:30:00Z"));
         assert_eq!(check.reason, None);
     }
 }
