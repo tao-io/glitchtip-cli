@@ -158,6 +158,12 @@ enum Commands {
         #[command(subcommand)]
         command: EventsCommand,
     },
+
+    /// Manage uptime monitors
+    Monitors {
+        #[command(subcommand)]
+        command: MonitorsCommand,
+    },
 }
 
 #[derive(Subcommand)]
@@ -234,6 +240,22 @@ enum EventsCommand {
         /// Display the tags column
         #[arg(long = "show-tags", short = 'T')]
         show_tags: bool,
+    },
+}
+
+#[derive(Subcommand)]
+enum MonitorsCommand {
+    /// List uptime monitors
+    List,
+
+    /// Run a command and send a heartbeat on success
+    Run {
+        /// The heartbeat endpoint UUID
+        endpoint_id: String,
+
+        /// Command and arguments to execute
+        #[arg(last = true, required = true, num_args = 1..)]
+        args: Vec<String>,
     },
 }
 
@@ -669,6 +691,16 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
             }
             IssuesCommand::Unresolve { id, status, all } => {
                 commands::issues::unresolve(&config, &id, status.as_deref(), all).await
+            }
+        },
+        Commands::Monitors { command } => match command {
+            MonitorsCommand::List => commands::monitors::list(&config).await,
+            MonitorsCommand::Run { endpoint_id, args } => {
+                let code = commands::monitors::run(&config, &endpoint_id, &args).await?;
+                if code != 0 {
+                    process::exit(code);
+                }
+                Ok(())
             }
         },
     }

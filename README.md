@@ -86,6 +86,8 @@ project=my-project
 | `issues unresolve` | Supported | Bulk unresolve issues |
 | `send-envelope` | Supported | Send a pre-built envelope file |
 | `events list` | Supported | With `--show-user` and `--show-tags` |
+| `monitors list` | Supported | List uptime monitors |
+| `monitors run` | Supported | Run a command and send heartbeat on success |
 
 ### Not yet supported
 
@@ -94,7 +96,7 @@ These commands are not yet implemented, listed roughly in order of priority.
 | Command | Notes |
 |---|---|
 | `logs list` | List and filter log entries; GlitchTip supports logs |
-| `monitors list` / `monitors run` | Cron monitor management and job wrapping |
+| `monitors create` / `monitors delete` | Full CRUD for uptime monitors |
 | `debug-files upload` | Upload ELF/dSYM/PDB debug symbols |
 | `debug-files check` / `find` / `print-sources` | Inspect and locate debug information files |
 | `debug-files bundle-sources` | Package source files referenced by debug info into ZIP bundles |

@@ -192,6 +192,34 @@ pub struct AssembleResponse {
     pub missing_chunks: Vec<String>,
 }
 
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
+pub struct MonitorInfo {
+    pub id: serde_json::Value,
+    pub name: String,
+    #[serde(alias = "monitorType")]
+    pub monitor_type: String,
+    pub url: Option<String>,
+    #[serde(alias = "endpointId")]
+    pub endpoint_id: Option<String>,
+    pub interval: Option<u64>,
+    #[serde(alias = "isUp")]
+    pub is_up: Option<bool>,
+    #[serde(alias = "heartbeatEndpoint")]
+    pub heartbeat_endpoint: Option<String>,
+    pub created: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
+pub struct MonitorCheckInfo {
+    #[serde(alias = "isUp")]
+    pub is_up: Option<bool>,
+    #[serde(alias = "startCheck")]
+    pub start_check: Option<String>,
+    pub reason: Option<u64>,
+}
+
 #[derive(Debug, Serialize)]
 pub struct IssueChanges {
     #[serde(rename = "status")]
@@ -349,6 +377,31 @@ impl ApiClient {
         }
 
         Ok(())
+    }
+
+    pub async fn post_unauthenticated<B: Serialize, T: DeserializeOwned>(
+        &self,
+        path: &str,
+        body: &B,
+    ) -> Result<T> {
+        let url = self.api_url(path);
+        let resp = self
+            .client
+            .post(&url)
+            .json(body)
+            .send()
+            .await
+            .with_context(|| format!("POST {url} failed"))?;
+
+        let status = resp.status();
+        if !status.is_success() {
+            let body = resp.text().await.unwrap_or_default();
+            bail!("POST {url} returned {status}: {body}");
+        }
+
+        resp.json::<T>()
+            .await
+            .with_context(|| format!("Failed to parse response from POST {url}"))
     }
 
     pub async fn upload_chunk(&self, url: &str, data: Vec<u8>) -> Result<()> {
@@ -521,6 +574,22 @@ impl ApiClient {
         self.get(&format!("projects/{org}/{project}/issues/")).await
     }
 
+    pub async fn list_monitors(&self, org: &str) -> Result<Vec<MonitorInfo>> {
+        self.get(&format!("organizations/{org}/monitors/")).await
+    }
+
+    pub async fn heartbeat_check(
+        &self,
+        org: &str,
+        endpoint_id: &str,
+    ) -> Result<MonitorCheckInfo> {
+        self.post_unauthenticated(
+            &format!("organizations/{org}/heartbeat_check/{endpoint_id}/"),
+            &serde_json::Value::Object(serde_json::Map::new()),
+        )
+        .await
+    }
+
     pub async fn update_issues(
         &self,
         org: &str,
@@ -664,5 +733,79 @@ mod tests {
         assert_eq!(issues[0].short_id.as_deref(), Some("MY-PROJECT-1"));
         assert_eq!(issues[0].status.as_deref(), Some("unresolved"));
         assert_eq!(issues[0].level.as_deref(), Some("error"));
+    }
+
+    #[tokio::test]
+    async fn test_list_monitors() {
+        let mut server = Server::new_async().await;
+        let url = server.url();
+
+        let _m = server
+            .mock("GET", "/api/0/organizations/my-org/monitors/")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(r#"[{"id": 1, "name": "My Website", "monitorType": "Ping", "url": "https://example.com", "endpointId": "abc-123", "interval": 60, "isUp": true, "heartbeatEndpoint": null, "created": "2024-01-01T00:00:00Z"}]"#)
+            .create_async()
+            .await;
+
+        let config = Config {
+            url: url.clone(),
+            auth_token: Some("token".to_string()),
+            org: Some("my-org".to_string()),
+            log_level: "warn".to_string(),
+            ..Default::default()
+        };
+
+        let client = ApiClient::from_config(&config).unwrap();
+        let monitors = client.list_monitors("my-org").await.unwrap();
+
+        assert_eq!(monitors.len(), 1);
+        assert_eq!(monitors[0].name, "My Website");
+        assert_eq!(monitors[0].monitor_type, "Ping");
+        assert_eq!(monitors[0].url.as_deref(), Some("https://example.com"));
+        assert_eq!(monitors[0].is_up, Some(true));
+        assert_eq!(monitors[0].interval, Some(60));
+    }
+
+    #[tokio::test]
+    async fn test_heartbeat_check() {
+        let mut server = Server::new_async().await;
+        let url = server.url();
+
+        let endpoint_id = "550e8400-e29b-41d4-a716-446655440000";
+
+        let _m = server
+            .mock(
+                "POST",
+                &*format!(
+                    "/api/0/organizations/my-org/heartbeat_check/{endpoint_id}/"
+                ),
+            )
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(r#"{"isUp": true, "startCheck": "2024-01-15T10:30:00Z", "reason": null}"#)
+            .create_async()
+            .await;
+
+        let config = Config {
+            url: url.clone(),
+            auth_token: Some("token".to_string()),
+            org: Some("my-org".to_string()),
+            log_level: "warn".to_string(),
+            ..Default::default()
+        };
+
+        let client = ApiClient::from_config(&config).unwrap();
+        let check = client
+            .heartbeat_check("my-org", endpoint_id)
+            .await
+            .unwrap();
+
+        assert_eq!(check.is_up, Some(true));
+        assert_eq!(
+            check.start_check.as_deref(),
+            Some("2024-01-15T10:30:00Z")
+        );
+        assert_eq!(check.reason, None);
     }
 }
