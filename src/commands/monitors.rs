@@ -108,10 +108,10 @@ pub async fn create(config: &Config, opts: &CreateOptions<'_>) -> Result<()> {
         println!("ID: {}", monitor.id);
     }
 
-    if monitor.monitor_type == "Heartbeat" {
-        if let Some(endpoint) = monitor.endpoint_id {
-            println!("Endpoint ID: {}", endpoint);
-        }
+    if monitor.monitor_type == "Heartbeat"
+        && let Some(endpoint) = monitor.endpoint_id
+    {
+        println!("Endpoint ID: {}", endpoint);
     }
 
     Ok(())

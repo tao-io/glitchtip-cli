@@ -192,6 +192,50 @@ pub struct AssembleResponse {
     pub missing_chunks: Vec<String>,
 }
 
+/// Request body for DIF assemble: maps file checksum to file info.
+#[derive(Debug, Serialize)]
+pub struct DifAssembleRequest {
+    #[serde(flatten)]
+    pub files: std::collections::HashMap<String, DifAssembleFile>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct DifAssembleFile {
+    pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub debug_id: Option<String>,
+    pub chunks: Vec<String>,
+}
+
+/// Response from DIF assemble: maps file checksum to assembly status.
+#[derive(Debug, Deserialize)]
+pub struct DifAssembleResponse {
+    #[serde(flatten)]
+    pub files: std::collections::HashMap<String, DifAssembleStatus>,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
+pub struct DifAssembleStatus {
+    pub state: String,
+    #[serde(alias = "missingChunks", default)]
+    pub missing_chunks: Vec<String>,
+    pub detail: Option<String>,
+    pub dif: Option<DifInfo>,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
+pub struct DifInfo {
+    pub id: Option<String>,
+    #[serde(alias = "debugId")]
+    pub debug_id: Option<String>,
+    #[serde(alias = "cpuName")]
+    pub cpu_name: Option<String>,
+    #[serde(alias = "objectName")]
+    pub object_name: Option<String>,
+}
+
 #[derive(Debug, Serialize)]
 pub struct NewMonitor {
     pub name: String,
@@ -564,6 +608,19 @@ impl ApiClient {
         let encoded = urlencoding::encode(version);
         self.post(
             &format!("organizations/{org}/releases/{encoded}/assemble/"),
+            request,
+        )
+        .await
+    }
+
+    pub async fn assemble_difs(
+        &self,
+        org: &str,
+        project: &str,
+        request: &DifAssembleRequest,
+    ) -> Result<DifAssembleResponse> {
+        self.post(
+            &format!("projects/{org}/{project}/files/difs/assemble/"),
             request,
         )
         .await
@@ -990,6 +1047,9 @@ mod tests {
             url: Some("https://example.com".to_string()),
             interval: Some(60),
             project: None,
+            expected_body: None,
+            expected_status: None,
+            timeout: None,
         };
         let monitor = client.create_monitor("my-org", &new_monitor).await.unwrap();
 

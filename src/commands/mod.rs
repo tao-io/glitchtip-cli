@@ -1,3 +1,4 @@
+pub mod debug_files;
 pub mod deploys;
 pub mod events;
 pub mod info;

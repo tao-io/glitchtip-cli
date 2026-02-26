@@ -91,6 +91,12 @@ project=my-project
 | `monitors delete` | Supported | Delete an uptime monitor |
 | `monitors run` | Supported | Run a command and send heartbeat on success |
 | `logs list` | Supported | List and filter OpenTelemetry log entries |
+| `debug-files check` | Supported | Check debug info file for usability |
+| `debug-files upload` | Supported | Upload debug information files (ELF/dSYM/PDB/etc.) |
+| `debug-files find` | Supported | Locate debug files by debug ID |
+| `debug-files print-sources` | Supported | Print source references in a debug file |
+| `debug-files bundle-sources` | Supported | Create source bundles from debug info files |
+| `debug-files bundle-jvm` | Supported | Create source bundles from Java/Kotlin sources |
 
 ### Not yet supported
 
@@ -98,10 +104,6 @@ These commands are not yet implemented, listed roughly in order of priority.
 
 | Command | Notes |
 |---|---|
-| `debug-files upload` | Upload ELF/dSYM/PDB debug symbols |
-| `debug-files check` / `find` / `print-sources` | Inspect and locate debug information files |
-| `debug-files bundle-sources` | Package source files referenced by debug info into ZIP bundles |
-| `debug-files bundle-jvm` | Create source bundles from Java/Kotlin sources |
 | `react-native gradle` | Upload sourcemaps from Android gradle builds |
 | `dart-symbol-map upload` | Upload Dart/Flutter symbol maps for deobfuscation |
 | `repos list` | List repositories for an organization |

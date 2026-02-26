@@ -170,6 +170,13 @@ enum Commands {
         #[command(subcommand)]
         command: LogsCommand,
     },
+
+    /// Manage debug information files
+    #[command(name = "debug-files")]
+    DebugFiles {
+        #[command(subcommand)]
+        command: DebugFilesCommand,
+    },
 }
 
 #[derive(Subcommand)]
@@ -324,6 +331,111 @@ enum LogsCommand {
         /// Max results (default 100)
         #[arg(long)]
         limit: Option<u64>,
+    },
+}
+
+#[derive(Subcommand)]
+enum DebugFilesCommand {
+    /// Check debug info file for usability
+    Check {
+        /// Path to the debug info file
+        path: PathBuf,
+
+        /// Explicitly set the file type (dsym, elf, pe, pdb, portablepdb, sourcebundle, breakpad, proguard, wasm)
+        #[arg(long, short = 't')]
+        r#type: Option<String>,
+
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+    },
+
+    /// Upload debug information files
+    Upload {
+        /// Paths to search for debug info files
+        #[arg(required = true)]
+        paths: Vec<PathBuf>,
+
+        /// Only consider debug info files of the given type
+        #[arg(long, short = 't')]
+        r#type: Option<String>,
+
+        /// Do not scan for stack unwinding information
+        #[arg(long = "no-unwind")]
+        no_unwind: bool,
+
+        /// Do not scan for debugging information
+        #[arg(long = "no-debug")]
+        no_debug: bool,
+
+        /// Do not scan for source information
+        #[arg(long = "no-sources")]
+        no_sources: bool,
+
+        /// Wait for server to fully process uploaded files
+        #[arg(long)]
+        wait: bool,
+    },
+
+    /// Locate debug information files for given debug identifiers
+    Find {
+        /// Debug identifiers to search for
+        #[arg(required = true)]
+        ids: Vec<String>,
+
+        /// Only consider debug info files of the given type
+        #[arg(long, short = 't', action = clap::ArgAction::Append)]
+        r#type: Vec<String>,
+
+        /// Additional paths to search
+        #[arg(long, action = clap::ArgAction::Append)]
+        path: Vec<PathBuf>,
+
+        /// Do not look in well-known locations
+        #[arg(long = "no-well-known")]
+        no_well_known: bool,
+
+        /// Do not look in the current working directory
+        #[arg(long = "no-cwd")]
+        no_cwd: bool,
+
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+    },
+
+    /// Print source files linked by a debug info file
+    #[command(name = "print-sources")]
+    PrintSources {
+        /// Path to the debug info file
+        path: PathBuf,
+    },
+
+    /// Create source bundles from debug information files
+    #[command(name = "bundle-sources")]
+    BundleSources {
+        /// Paths to debug info files
+        #[arg(required = true)]
+        paths: Vec<PathBuf>,
+
+        /// Output directory (default: next to input file)
+        #[arg(long)]
+        output: Option<PathBuf>,
+    },
+
+    /// Create source bundles from JVM source files (Java, Kotlin, etc.)
+    #[command(name = "bundle-jvm")]
+    BundleJvm {
+        /// Directory containing source files
+        path: PathBuf,
+
+        /// Output directory
+        #[arg(long, required = true)]
+        output: PathBuf,
+
+        /// Debug ID (UUID) for the source bundle
+        #[arg(long = "debug-id", required = true)]
+        debug_id: String,
     },
 }
 
@@ -782,6 +894,46 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
                 };
                 commands::logs::list(&config, &opts).await
             }
+        },
+        Commands::DebugFiles { command } => match command {
+            DebugFilesCommand::Check { path, r#type, json } => {
+                commands::debug_files::check(&path, r#type.as_deref(), json)
+            }
+            DebugFilesCommand::Upload {
+                paths,
+                r#type,
+                no_unwind,
+                no_debug,
+                no_sources,
+                wait,
+            } => {
+                let opts = commands::debug_files::UploadOptions {
+                    paths: &paths,
+                    ty: r#type.as_deref(),
+                    no_unwind,
+                    no_debug,
+                    no_sources,
+                    wait,
+                };
+                commands::debug_files::upload(&config, &opts).await
+            }
+            DebugFilesCommand::Find {
+                ids,
+                r#type,
+                path,
+                no_well_known,
+                no_cwd,
+                json,
+            } => commands::debug_files::find(&ids, &r#type, &path, json, no_well_known, no_cwd),
+            DebugFilesCommand::PrintSources { path } => commands::debug_files::print_sources(&path),
+            DebugFilesCommand::BundleSources { paths, output } => {
+                commands::debug_files::bundle_sources(&paths, output.as_deref())
+            }
+            DebugFilesCommand::BundleJvm {
+                path,
+                output,
+                debug_id,
+            } => commands::debug_files::bundle_jvm(&path, &output, &debug_id),
         },
         Commands::Monitors { command } => match command {
             MonitorsCommand::List => commands::monitors::list(&config).await,

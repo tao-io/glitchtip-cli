@@ -19,6 +19,10 @@ tokio = { version = "1", features = ["full"] }
 chrono = { version = "0.4", default-features = false, features = ["serde", "std", "now"] }
 dirs = "6"
 flate2 = "1"
+proguard = { version = "5", features = ["uuid"] }
+symbolic = { version = "12", features = ["debuginfo"] }
+walkdir = "2"
+zip = { version = "7", default-features = false, features = ["deflate"] }
 open = "5"
 rpassword = "7"
 urlencoding = "2"
