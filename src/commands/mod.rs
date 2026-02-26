@@ -3,6 +3,7 @@ pub mod events;
 pub mod info;
 pub mod issues;
 pub mod login;
+pub mod logs;
 pub mod monitors;
 pub mod organizations;
 pub mod projects;

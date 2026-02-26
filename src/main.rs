@@ -164,6 +164,12 @@ enum Commands {
         #[command(subcommand)]
         command: MonitorsCommand,
     },
+
+    /// Query OpenTelemetry logs
+    Logs {
+        #[command(subcommand)]
+        command: LogsCommand,
+    },
 }
 
 #[derive(Subcommand)]
@@ -248,6 +254,34 @@ enum MonitorsCommand {
     /// List uptime monitors
     List,
 
+    /// Create a new uptime monitor
+    Create {
+        /// Name of the monitor
+        name: String,
+
+        /// Type of the monitor (e.g. Ping, GET, POST, Heartbeat)
+        #[arg(long, default_value = "Ping")]
+        monitor_type: String,
+
+        /// URL to check
+        #[arg(long)]
+        url: Option<String>,
+
+        /// Interval in seconds
+        #[arg(long)]
+        interval: Option<u64>,
+
+        /// Project slug
+        #[arg(long)]
+        project: Option<String>,
+    },
+
+    /// Delete an uptime monitor
+    Delete {
+        /// Monitor ID
+        id: String,
+    },
+
     /// Run a command and send a heartbeat on success
     Run {
         /// The heartbeat endpoint UUID
@@ -256,6 +290,40 @@ enum MonitorsCommand {
         /// Command and arguments to execute
         #[arg(last = true, required = true, num_args = 1..)]
         args: Vec<String>,
+    },
+}
+
+#[derive(Subcommand)]
+enum LogsCommand {
+    /// List log entries
+    List {
+        /// Filter by log level (can be specified multiple times)
+        #[arg(long, action = clap::ArgAction::Append)]
+        level: Vec<String>,
+
+        /// Filter by service name
+        #[arg(long)]
+        service: Option<String>,
+
+        /// Filter by environment
+        #[arg(long)]
+        environment: Option<String>,
+
+        /// Full-text search in log body
+        #[arg(long)]
+        query: Option<String>,
+
+        /// Start time (ISO 8601)
+        #[arg(long)]
+        start: Option<String>,
+
+        /// End time (ISO 8601)
+        #[arg(long)]
+        end: Option<String>,
+
+        /// Max results (default 100)
+        #[arg(long)]
+        limit: Option<u64>,
     },
 }
 
@@ -693,8 +761,51 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
                 commands::issues::unresolve(&config, &id, status.as_deref(), all).await
             }
         },
+        Commands::Logs { command } => match command {
+            LogsCommand::List {
+                level,
+                service,
+                environment,
+                query,
+                start,
+                end,
+                limit,
+            } => {
+                let opts = commands::logs::ListOptions {
+                    level: &level,
+                    service: service.as_deref(),
+                    environment: environment.as_deref(),
+                    query: query.as_deref(),
+                    start: start.as_deref(),
+                    end: end.as_deref(),
+                    limit,
+                };
+                commands::logs::list(&config, &opts).await
+            }
+        },
         Commands::Monitors { command } => match command {
             MonitorsCommand::List => commands::monitors::list(&config).await,
+            MonitorsCommand::Create {
+                name,
+                monitor_type,
+                url,
+                interval,
+                project,
+            } => {
+                let opts = commands::monitors::CreateOptions {
+                    name: &name,
+                    monitor_type: &monitor_type,
+                    url: url.as_deref(),
+                    interval,
+                    project: project.as_deref(),
+                };
+                commands::monitors::create(&config, &opts).await?;
+                Ok(())
+            }
+            MonitorsCommand::Delete { id } => {
+                commands::monitors::delete(&config, &id).await?;
+                Ok(())
+            }
             MonitorsCommand::Run { endpoint_id, args } => {
                 let code = commands::monitors::run(&config, &endpoint_id, &args).await?;
                 if code != 0 {

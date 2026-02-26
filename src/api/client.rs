@@ -192,6 +192,25 @@ pub struct AssembleResponse {
     pub missing_chunks: Vec<String>,
 }
 
+#[derive(Debug, Serialize)]
+pub struct NewMonitor {
+    pub name: String,
+    #[serde(rename = "monitorType")]
+    pub monitor_type: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub interval: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub project: Option<String>,
+    #[serde(rename = "expectedBody", skip_serializing_if = "Option::is_none")]
+    pub expected_body: Option<String>,
+    #[serde(rename = "expectedStatus", skip_serializing_if = "Option::is_none")]
+    pub expected_status: Option<u16>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub timeout: Option<u64>,
+}
+
 #[derive(Debug, Deserialize)]
 #[allow(dead_code)]
 pub struct MonitorInfo {
@@ -218,6 +237,38 @@ pub struct MonitorCheckInfo {
     #[serde(alias = "startCheck")]
     pub start_check: Option<String>,
     pub reason: Option<u64>,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
+pub struct LogEntry {
+    pub id: String,
+    pub timestamp: String,
+    pub level: String,
+    pub body: String,
+    pub service: String,
+    pub environment: String,
+    pub host: String,
+    #[serde(alias = "traceID")]
+    pub trace_id: Option<String>,
+    #[serde(alias = "spanID")]
+    pub span_id: Option<String>,
+    pub severity_number: Option<u32>,
+    #[serde(default)]
+    pub data: serde_json::Value,
+    #[serde(alias = "projectId")]
+    pub project_id: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Default)]
+pub struct LogFilter {
+    pub level: Vec<String>,
+    pub service: Option<String>,
+    pub environment: Option<String>,
+    pub query: Option<String>,
+    pub start: Option<String>,
+    pub end: Option<String>,
+    pub limit: Option<u64>,
 }
 
 #[derive(Debug, Serialize)]
@@ -578,12 +629,53 @@ impl ApiClient {
         self.get(&format!("organizations/{org}/monitors/")).await
     }
 
+    pub async fn create_monitor(&self, org: &str, monitor: &NewMonitor) -> Result<MonitorInfo> {
+        self.post(&format!("organizations/{org}/monitors/"), monitor)
+            .await
+    }
+
+    pub async fn delete_monitor(&self, org: &str, monitor_id: &str) -> Result<()> {
+        self.delete(&format!("organizations/{org}/monitors/{monitor_id}/"))
+            .await
+    }
+
     pub async fn heartbeat_check(&self, org: &str, endpoint_id: &str) -> Result<MonitorCheckInfo> {
         self.post_unauthenticated(
             &format!("organizations/{org}/heartbeat_check/{endpoint_id}/"),
             &serde_json::Value::Object(serde_json::Map::new()),
         )
         .await
+    }
+
+    pub async fn list_logs(&self, org: &str, filter: &LogFilter) -> Result<Vec<LogEntry>> {
+        let mut params = Vec::new();
+        for lvl in &filter.level {
+            params.push(format!("level={}", urlencoding::encode(lvl)));
+        }
+        if let Some(ref s) = filter.service {
+            params.push(format!("service={}", urlencoding::encode(s)));
+        }
+        if let Some(ref e) = filter.environment {
+            params.push(format!("environment={}", urlencoding::encode(e)));
+        }
+        if let Some(ref q) = filter.query {
+            params.push(format!("query={}", urlencoding::encode(q)));
+        }
+        if let Some(ref s) = filter.start {
+            params.push(format!("start={}", urlencoding::encode(s)));
+        }
+        if let Some(ref e) = filter.end {
+            params.push(format!("end={}", urlencoding::encode(e)));
+        }
+        if let Some(l) = filter.limit {
+            params.push(format!("limit={l}"));
+        }
+        let query = if params.is_empty() {
+            String::new()
+        } else {
+            format!("?{}", params.join("&"))
+        };
+        self.get(&format!("organizations/{org}/logs/{query}")).await
     }
 
     pub async fn update_issues(
@@ -764,6 +856,79 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_list_logs() {
+        let mut server = Server::new_async().await;
+        let url = server.url();
+
+        let _m = server
+            .mock("GET", "/api/0/organizations/my-org/logs/?level=error&limit=10")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(
+                r#"[{"id": "01912345-6789-7abc-def0-123456789abc", "timestamp": "2025-02-25T12:00:00Z", "level": "error", "body": "Connection refused", "service": "api-gateway", "environment": "production", "host": "host-1", "traceID": "abcd1234-0000-0000-0000-000000000000", "spanID": "00f067aa0ba902b7", "severity_number": 17, "data": {}, "projectId": 1}]"#,
+            )
+            .create_async()
+            .await;
+
+        let config = Config {
+            url: url.clone(),
+            auth_token: Some("token".to_string()),
+            org: Some("my-org".to_string()),
+            log_level: "warn".to_string(),
+            ..Default::default()
+        };
+
+        let client = ApiClient::from_config(&config).unwrap();
+        let filter = LogFilter {
+            level: vec!["error".to_string()],
+            limit: Some(10),
+            ..Default::default()
+        };
+        let logs = client.list_logs("my-org", &filter).await.unwrap();
+
+        assert_eq!(logs.len(), 1);
+        assert_eq!(logs[0].level, "error");
+        assert_eq!(logs[0].body, "Connection refused");
+        assert_eq!(logs[0].service, "api-gateway");
+        assert_eq!(logs[0].environment, "production");
+        assert_eq!(logs[0].host, "host-1");
+        assert_eq!(
+            logs[0].trace_id.as_deref(),
+            Some("abcd1234-0000-0000-0000-000000000000")
+        );
+        assert_eq!(logs[0].span_id.as_deref(), Some("00f067aa0ba902b7"));
+        assert_eq!(logs[0].severity_number, Some(17));
+    }
+
+    #[tokio::test]
+    async fn test_list_logs_no_filters() {
+        let mut server = Server::new_async().await;
+        let url = server.url();
+
+        let _m = server
+            .mock("GET", "/api/0/organizations/my-org/logs/")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(r#"[]"#)
+            .create_async()
+            .await;
+
+        let config = Config {
+            url: url.clone(),
+            auth_token: Some("token".to_string()),
+            org: Some("my-org".to_string()),
+            log_level: "warn".to_string(),
+            ..Default::default()
+        };
+
+        let client = ApiClient::from_config(&config).unwrap();
+        let filter = LogFilter::default();
+        let logs = client.list_logs("my-org", &filter).await.unwrap();
+
+        assert!(logs.is_empty());
+    }
+
+    #[tokio::test]
     async fn test_heartbeat_check() {
         let mut server = Server::new_async().await;
         let url = server.url();
@@ -795,5 +960,63 @@ mod tests {
         assert_eq!(check.is_up, Some(true));
         assert_eq!(check.start_check.as_deref(), Some("2024-01-15T10:30:00Z"));
         assert_eq!(check.reason, None);
+    }
+
+    #[tokio::test]
+    async fn test_create_monitor() {
+        let mut server = Server::new_async().await;
+        let url = server.url();
+
+        let _m = server
+            .mock("POST", "/api/0/organizations/my-org/monitors/")
+            .with_status(201)
+            .with_header("content-type", "application/json")
+            .with_body(r#"{"id": 2, "name": "New Monitor", "monitorType": "Ping", "url": "https://example.com", "interval": 60, "isUp": true, "created": "2024-01-01T00:00:00Z"}"#)
+            .create_async()
+            .await;
+
+        let config = Config {
+            url: url.clone(),
+            auth_token: Some("token".to_string()),
+            org: Some("my-org".to_string()),
+            log_level: "warn".to_string(),
+            ..Default::default()
+        };
+
+        let client = ApiClient::from_config(&config).unwrap();
+        let new_monitor = NewMonitor {
+            name: "New Monitor".to_string(),
+            monitor_type: "Ping".to_string(),
+            url: Some("https://example.com".to_string()),
+            interval: Some(60),
+            project: None,
+        };
+        let monitor = client.create_monitor("my-org", &new_monitor).await.unwrap();
+
+        assert_eq!(monitor.name, "New Monitor");
+        assert_eq!(monitor.id.as_u64(), Some(2));
+    }
+
+    #[tokio::test]
+    async fn test_delete_monitor() {
+        let mut server = Server::new_async().await;
+        let url = server.url();
+
+        let _m = server
+            .mock("DELETE", "/api/0/organizations/my-org/monitors/2/")
+            .with_status(204)
+            .create_async()
+            .await;
+
+        let config = Config {
+            url: url.clone(),
+            auth_token: Some("token".to_string()),
+            org: Some("my-org".to_string()),
+            log_level: "warn".to_string(),
+            ..Default::default()
+        };
+
+        let client = ApiClient::from_config(&config).unwrap();
+        client.delete_monitor("my-org", "2").await.unwrap();
     }
 }

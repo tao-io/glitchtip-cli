@@ -87,7 +87,10 @@ project=my-project
 | `send-envelope` | Supported | Send a pre-built envelope file |
 | `events list` | Supported | With `--show-user` and `--show-tags` |
 | `monitors list` | Supported | List uptime monitors |
+| `monitors create` | Supported | Create an uptime monitor |
+| `monitors delete` | Supported | Delete an uptime monitor |
 | `monitors run` | Supported | Run a command and send heartbeat on success |
+| `logs list` | Supported | List and filter OpenTelemetry log entries |
 
 ### Not yet supported
 
@@ -95,8 +98,6 @@ These commands are not yet implemented, listed roughly in order of priority.
 
 | Command | Notes |
 |---|---|
-| `logs list` | List and filter log entries; GlitchTip supports logs |
-| `monitors create` / `monitors delete` | Full CRUD for uptime monitors |
 | `debug-files upload` | Upload ELF/dSYM/PDB debug symbols |
 | `debug-files check` / `find` / `print-sources` | Inspect and locate debug information files |
 | `debug-files bundle-sources` | Package source files referenced by debug info into ZIP bundles |
@@ -128,7 +129,6 @@ Features unique to GlitchTip that we plan to add CLI support for.
 
 | Feature | Notes |
 |---|---|
-| `monitors` (uptime) | CRUD for GlitchTip's uptime monitors — manage monitoring alongside deploys |
 | `logs list --live` (streaming) | WebSocket-based live log streaming |
 
 ## License

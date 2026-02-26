@@ -3,7 +3,16 @@ use std::process::Command;
 use anyhow::{Context, Result};
 
 use crate::api::ApiClient;
+use crate::api::client::NewMonitor;
 use crate::config::Config;
+
+pub struct CreateOptions<'a> {
+    pub name: &'a str,
+    pub monitor_type: &'a str,
+    pub url: Option<&'a str>,
+    pub interval: Option<u64>,
+    pub project: Option<&'a str>,
+}
 
 pub async fn list(config: &Config) -> Result<()> {
     let org = config.get_org()?;
@@ -66,4 +75,57 @@ pub async fn run(config: &Config, endpoint_id: &str, args: &[String]) -> Result<
     }
 
     Ok(exit_code)
+}
+
+pub async fn create(config: &Config, opts: &CreateOptions<'_>) -> Result<()> {
+    let org = config.get_org()?;
+    let client = ApiClient::from_config(config)?;
+
+    let new_monitor = NewMonitor {
+        name: opts.name.to_string(),
+        monitor_type: opts.monitor_type.to_string(),
+        url: opts.url.map(|s| s.to_string()),
+        interval: opts.interval,
+        project: opts.project.map(|s| s.to_string()),
+        expected_body: Some("".to_string()),
+        expected_status: Some(200),
+        timeout: Some(20),
+    };
+
+    let monitor = client
+        .create_monitor(org, &new_monitor)
+        .await
+        .context("Failed to create monitor")?;
+
+    println!("Created monitor: {}", monitor.name);
+    if let Some(id) = monitor.id.as_str() {
+        println!("ID: {}", id);
+    } else if let Some(id_num) = monitor.id.as_u64() {
+        println!("ID: {}", id_num);
+    } else if let Some(id_val) = monitor.id.as_i64() {
+        println!("ID: {}", id_val);
+    } else {
+        println!("ID: {}", monitor.id);
+    }
+
+    if monitor.monitor_type == "Heartbeat" {
+        if let Some(endpoint) = monitor.endpoint_id {
+            println!("Endpoint ID: {}", endpoint);
+        }
+    }
+
+    Ok(())
+}
+
+pub async fn delete(config: &Config, id: &str) -> Result<()> {
+    let org = config.get_org()?;
+    let client = ApiClient::from_config(config)?;
+
+    client
+        .delete_monitor(org, id)
+        .await
+        .context("Failed to delete monitor")?;
+
+    println!("Deleted monitor: {}", id);
+    Ok(())
 }
