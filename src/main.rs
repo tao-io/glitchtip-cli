@@ -177,6 +177,13 @@ enum Commands {
         #[command(subcommand)]
         command: DebugFilesCommand,
     },
+
+    /// Upload Dart/Flutter symbol maps for deobfuscation
+    #[command(name = "dart-symbol-map")]
+    DartSymbolMap {
+        #[command(subcommand)]
+        command: DartSymbolMapCommand,
+    },
 }
 
 #[derive(Subcommand)]
@@ -436,6 +443,20 @@ enum DebugFilesCommand {
         /// Debug ID (UUID) for the source bundle
         #[arg(long = "debug-id", required = true)]
         debug_id: String,
+    },
+}
+
+#[derive(Subcommand)]
+enum DartSymbolMapCommand {
+    /// Upload a Dart symbol map for deobfuscation
+    Upload {
+        /// Path to the dartsymbolmap JSON file
+        mapping: PathBuf,
+        /// Path to the debug file (for Debug ID extraction)
+        debug_file: PathBuf,
+        /// Wait for server processing
+        #[arg(long)]
+        wait: bool,
     },
 }
 
@@ -934,6 +955,13 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
                 output,
                 debug_id,
             } => commands::debug_files::bundle_jvm(&path, &output, &debug_id),
+        },
+        Commands::DartSymbolMap { command } => match command {
+            DartSymbolMapCommand::Upload {
+                mapping,
+                debug_file,
+                wait,
+            } => commands::dart_symbol_map::upload(&config, &mapping, &debug_file, wait).await,
         },
         Commands::Monitors { command } => match command {
             MonitorsCommand::List => commands::monitors::list(&config).await,

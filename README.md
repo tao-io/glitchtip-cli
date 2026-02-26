@@ -97,6 +97,7 @@ project=my-project
 | `debug-files print-sources` | Supported | Print source references in a debug file |
 | `debug-files bundle-sources` | Supported | Create source bundles from debug info files |
 | `debug-files bundle-jvm` | Supported | Create source bundles from Java/Kotlin sources |
+| `dart-symbol-map upload` | Supported | Upload Dart/Flutter symbol maps for deobfuscation |
 
 ### Not yet supported
 
@@ -105,7 +106,6 @@ These commands are not yet implemented, listed roughly in order of priority.
 | Command | Notes |
 |---|---|
 | `react-native gradle` | Upload sourcemaps from Android gradle builds |
-| `dart-symbol-map upload` | Upload Dart/Flutter symbol maps for deobfuscation |
 | `repos list` | List repositories for an organization |
 | `sourcemaps resolve` | Resolve sourcemap for a given line/column position |
 

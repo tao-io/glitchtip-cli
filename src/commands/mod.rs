@@ -1,3 +1,4 @@
+pub mod dart_symbol_map;
 pub mod debug_files;
 pub mod deploys;
 pub mod events;

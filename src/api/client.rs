@@ -174,6 +174,8 @@ pub struct ChunkUploadInfo {
     pub chunk_size: u64,
     #[serde(alias = "hashAlgorithm")]
     pub hash_algorithm: String,
+    #[serde(alias = "maxFileSize")]
+    pub max_file_size: Option<u64>,
     #[serde(default)]
     pub accept: Vec<String>,
 }
