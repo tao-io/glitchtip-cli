@@ -501,9 +501,9 @@ impl ApiClient {
             .with_context(|| format!("Failed to parse response from POST {url}"))
     }
 
-    pub async fn upload_chunk(&self, url: &str, data: Vec<u8>) -> Result<()> {
+    pub async fn upload_chunk(&self, url: &str, data: Vec<u8>, checksum: &str) -> Result<()> {
         let headers = self.default_headers()?;
-        let part = reqwest::multipart::Part::bytes(data).file_name("chunk");
+        let part = reqwest::multipart::Part::bytes(data).file_name(checksum.to_string());
         let form = reqwest::multipart::Form::new().part("file_gzip", part);
 
         let resp = self

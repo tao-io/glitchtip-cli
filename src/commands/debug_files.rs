@@ -140,10 +140,8 @@ pub async fn upload(config: &Config, opts: &UploadOptions<'_>) -> Result<()> {
 
         // Gzip compress
         let compressed = gzip_compress(&data)?;
-        let chunk_checksum = sha1_hex(&compressed);
-
         // Upload chunk
-        match client.upload_chunk(&upload_info.url, compressed).await {
+        match client.upload_chunk(&upload_info.url, compressed, &checksum).await {
             Ok(()) => {
                 println!("  Uploaded chunk for: {display_name}");
                 uploaded += 1;
@@ -157,11 +155,11 @@ pub async fn upload(config: &Config, opts: &UploadOptions<'_>) -> Result<()> {
 
         checksum_to_name.insert(checksum.clone(), display_name.clone());
         assemble_files.insert(
-            checksum,
+            checksum.clone(),
             DifAssembleFile {
                 name: display_name,
                 debug_id: dif_info.debug_id.clone(),
-                chunks: vec![chunk_checksum],
+                chunks: vec![checksum],
             },
         );
     }

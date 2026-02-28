@@ -80,8 +80,6 @@ pub async fn upload(config: &Config, mapping: &Path, debug_file: &Path, wait: bo
     // Compute checksums, compress, and upload
     let file_checksum = sha1_hex(&data);
     let compressed = gzip_compress(&data)?;
-    let chunk_checksum = sha1_hex(&compressed);
-
     let display_name = mapping
         .file_name()
         .unwrap_or(mapping.as_os_str())
@@ -89,7 +87,7 @@ pub async fn upload(config: &Config, mapping: &Path, debug_file: &Path, wait: bo
         .to_string();
 
     client
-        .upload_chunk(&upload_info.url, compressed)
+        .upload_chunk(&upload_info.url, compressed, &file_checksum)
         .await
         .context("Failed to upload mapping chunk")?;
     println!("Uploaded chunk for: {display_name}");
@@ -101,7 +99,7 @@ pub async fn upload(config: &Config, mapping: &Path, debug_file: &Path, wait: bo
         DifAssembleFile {
             name: display_name.clone(),
             debug_id: Some(debug_id),
-            chunks: vec![chunk_checksum],
+            chunks: vec![file_checksum.clone()],
         },
     );
     let request = DifAssembleRequest { files };

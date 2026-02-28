@@ -121,15 +121,13 @@ async fn upload_single_file(
 
     // Gzip compress
     let compressed = gzip_compress(&data)?;
-    let chunk_checksum = sha1_hex(&compressed);
-
     // Upload chunk
-    client.upload_chunk(upload_url, compressed).await?;
+    client.upload_chunk(upload_url, compressed, &checksum).await?;
 
     // Assemble into release
     let assemble = AssembleRequest {
-        checksum,
-        chunks: vec![chunk_checksum],
+        checksum: checksum.clone(),
+        chunks: vec![checksum],
     };
 
     client
