@@ -122,7 +122,9 @@ async fn upload_single_file(
     // Gzip compress
     let compressed = gzip_compress(&data)?;
     // Upload chunk
-    client.upload_chunk(upload_url, compressed, &checksum).await?;
+    client
+        .upload_chunk(upload_url, compressed, &checksum)
+        .await?;
 
     // Assemble into release
     let assemble = AssembleRequest {

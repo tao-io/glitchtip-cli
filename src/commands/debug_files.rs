@@ -141,7 +141,10 @@ pub async fn upload(config: &Config, opts: &UploadOptions<'_>) -> Result<()> {
         // Gzip compress
         let compressed = gzip_compress(&data)?;
         // Upload chunk
-        match client.upload_chunk(&upload_info.url, compressed, &checksum).await {
+        match client
+            .upload_chunk(&upload_info.url, compressed, &checksum)
+            .await
+        {
             Ok(()) => {
                 println!("  Uploaded chunk for: {display_name}");
                 uploaded += 1;
