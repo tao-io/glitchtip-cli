@@ -99,6 +99,8 @@ publish-crates-io:
   image: rust:latest
   rules:
     - if: '$CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+/'
+  environment:
+    name: crates-io
   id_tokens:
     CRATES_IO_OIDC_TOKEN:
       aud: https://crates.io
