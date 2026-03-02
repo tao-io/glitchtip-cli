@@ -110,7 +110,7 @@ publish-crates-io:
       CRATES_IO_TOKEN=$(curl -s -X PUT "https://crates.io/api/v1/tokens/oidc" \
         -H "Content-Type: application/json" \
         -d "{\"token\": \"$CRATES_IO_OIDC_TOKEN\"}" | jq -r '.token')
-    - cargo publish --token $CRATES_IO_TOKEN --allow-dirty
+    - cargo publish --token $CRATES_IO_TOKEN
 
 release:
   stage: release
