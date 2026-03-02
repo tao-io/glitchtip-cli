@@ -4,6 +4,11 @@ version = "0.0.1"
 edition = "2024"
 description = "Open source CLI for GlitchTip"
 license = "MIT"
+repository = "https://gitlab.com/glitchtip/glitchtip-cli"
+homepage = "https://glitchtip.com"
+readme = "README.md"
+keywords = ["glitchtip", "cli", "error-tracking", "devops"]
+categories = ["development-tools", "command-line-utilities"]
 
 [[bin]]
 name = "glitchtip-cli"
