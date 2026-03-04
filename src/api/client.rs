@@ -79,6 +79,15 @@ pub struct RepositoryInfo {
     pub date_created: Option<String>,
 }
 
+#[derive(Debug, Serialize)]
+pub struct CreateRepositoryRequest<'a> {
+    pub name: &'a str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub url: Option<&'a str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub provider: Option<serde_json::Value>,
+}
+
 #[derive(Debug, Deserialize)]
 #[allow(dead_code)]
 pub struct OrganizationInfo {
@@ -690,6 +699,14 @@ impl ApiClient {
 
     pub async fn list_repositories(&self, org: &str) -> Result<Vec<RepositoryInfo>> {
         self.get(&format!("organizations/{org}/repos/")).await
+    }
+
+    pub async fn create_repository(
+        &self,
+        org: &str,
+        req: &CreateRepositoryRequest<'_>,
+    ) -> Result<RepositoryInfo> {
+        self.post(&format!("organizations/{org}/repos/"), req).await
     }
 
     pub async fn list_events(&self, org: &str, project: &str) -> Result<Vec<EventInfo>> {

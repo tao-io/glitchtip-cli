@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 
-use crate::api::ApiClient;
+use crate::api::{ApiClient, CreateRepositoryRequest};
 use crate::config::Config;
 
 pub async fn list(config: &Config) -> Result<()> {
@@ -34,4 +34,50 @@ pub async fn list(config: &Config) -> Result<()> {
     }
 
     Ok(())
+}
+
+pub async fn create(
+    config: &Config,
+    name: &str,
+    url: Option<&str>,
+    provider: Option<&str>,
+) -> Result<()> {
+    let org = config.get_org()?;
+    let client = ApiClient::from_config(config)?;
+
+    let provider_json = match provider {
+        Some(p) => {
+            // Check if it's already JSON (starts with { or [), otherwise wrap it in an object like {"id": "..."}
+            let trimmed = p.trim();
+            if trimmed.starts_with('{') || trimmed.starts_with('[') {
+                Some(serde_json::from_str(trimmed).context("Invalid JSON in provider argument")?)
+            } else {
+                Some(serde_json::json!({ "id": trimmed, "name": trimmed }))
+            }
+        }
+        None => None,
+    };
+
+    let req = CreateRepositoryRequest {
+        name,
+        url,
+        provider: provider_json,
+    };
+
+    match client.create_repository(org, &req).await {
+        Ok(_) => {
+            println!("Created repository: {}", name);
+            Ok(())
+        }
+        Err(e) => {
+            let e_str = e.to_string();
+            // Handle 409 Conflict if repository already exists
+            if e_str.contains("409") {
+                println!("Repository '{}' already exists", name);
+                Ok(())
+            } else {
+                Err(e).context("Failed to create repository")
+            }
+        }
+    }
 }

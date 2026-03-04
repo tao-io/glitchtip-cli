@@ -208,6 +208,20 @@ enum ProjectsCommand {
 enum ReposCommand {
     /// List repositories for an organization
     List,
+
+    /// Create a new repository
+    Create {
+        /// Name of the repository
+        name: String,
+
+        /// URL of the repository
+        #[arg(long)]
+        url: Option<String>,
+
+        /// Provider (e.g. github, gitlab, etc. or a JSON string)
+        #[arg(long)]
+        provider: Option<String>,
+    },
 }
 
 #[derive(Subcommand)]
@@ -537,6 +551,10 @@ enum ReleasesCommand {
         #[arg(long)]
         auto: bool,
 
+        /// Repository name to associate with the release
+        #[arg(long)]
+        repo: Option<String>,
+
         /// Commit hash (can be specified multiple times)
         #[arg(long = "commit", short, action = clap::ArgAction::Append)]
         commits: Vec<String>,
@@ -810,8 +828,12 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
             ReleasesCommand::SetCommits {
                 version,
                 auto,
+                repo,
                 commits,
-            } => commands::releases::set_commits(&config, &version, auto, &commits).await,
+            } => {
+                commands::releases::set_commits(&config, &version, auto, repo.as_deref(), &commits)
+                    .await
+            }
             ReleasesCommand::Info {
                 version,
                 show_projects,
@@ -890,6 +912,11 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
         },
         Commands::Repos { command } => match command {
             ReposCommand::List => commands::repos::list(&config).await,
+            ReposCommand::Create {
+                name,
+                url,
+                provider,
+            } => commands::repos::create(&config, &name, url.as_deref(), provider.as_deref()).await,
         },
         Commands::Events { command } => match command {
             EventsCommand::List {

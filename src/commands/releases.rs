@@ -280,15 +280,45 @@ pub async fn restore(config: &Config, version: &str) -> Result<()> {
     Ok(())
 }
 
+fn extract_repo_name(url: &str) -> Option<String> {
+    let url = url.trim().strip_suffix(".git").unwrap_or(url.trim());
+    let parts: Vec<&str> = url.split(&['/', ':'][..]).collect();
+    parts
+        .last()
+        .filter(|s| !s.is_empty())
+        .map(|s| s.to_string())
+}
+
 pub async fn set_commits(
     config: &Config,
     version: &str,
     auto: bool,
+    repo_arg: Option<&str>,
     commits_arg: &[String],
 ) -> Result<()> {
     let org = config.get_org()?;
 
     let client = ApiClient::from_config(config)?;
+
+    let repo_name = if let Some(r) = repo_arg {
+        Some(r.to_string())
+    } else if auto {
+        let output = std::process::Command::new("git")
+            .args(["remote", "get-url", "origin"])
+            .output();
+        if let Ok(output) = output {
+            if output.status.success() {
+                let url = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                extract_repo_name(&url)
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    } else {
+        None
+    };
 
     let commits = if auto {
         discover_git_commits()?
@@ -324,6 +354,16 @@ pub async fn set_commits(
         .context("Failed to set commits")?;
 
     println!("Set commits for release {version}.");
+
+    if let Some(name) = repo_name {
+        let req = crate::api::CreateRepositoryRequest {
+            name: &name,
+            url: None,
+            provider: None,
+        };
+        // ignore errors and 409
+        let _ = client.create_repository(org, &req).await;
+    }
 
     Ok(())
 }
