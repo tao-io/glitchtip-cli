@@ -147,6 +147,12 @@ enum Commands {
         command: ProjectsCommand,
     },
 
+    /// Manage repositories
+    Repos {
+        #[command(subcommand)]
+        command: ReposCommand,
+    },
+
     /// Manage issues
     Issues {
         #[command(subcommand)]
@@ -195,6 +201,12 @@ enum OrganizationsCommand {
 #[derive(Subcommand)]
 enum ProjectsCommand {
     /// List available projects
+    List,
+}
+
+#[derive(Subcommand)]
+enum ReposCommand {
+    /// List repositories for an organization
     List,
 }
 
@@ -875,6 +887,9 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
         },
         Commands::Projects { command } => match command {
             ProjectsCommand::List => commands::projects::list(&config).await,
+        },
+        Commands::Repos { command } => match command {
+            ReposCommand::List => commands::repos::list(&config).await,
         },
         Commands::Events { command } => match command {
             EventsCommand::List {

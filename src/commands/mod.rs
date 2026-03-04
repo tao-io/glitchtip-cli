@@ -10,6 +10,7 @@ pub mod monitors;
 pub mod organizations;
 pub mod projects;
 pub mod releases;
+pub mod repos;
 pub mod send_envelope;
 pub mod send_event;
 pub mod sourcemaps;

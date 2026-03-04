@@ -76,6 +76,7 @@ project=my-project
 | `send-event` | Supported | DSN auth, envelope protocol |
 | `organizations list` | Supported | |
 | `projects list` | Supported | |
+| `repos list` | Supported | |
 | `releases propose-version` | Supported | |
 | `releases info` | Supported | Version, date, projects, commits |
 | `releases archive` | Supported | |
@@ -106,7 +107,6 @@ These commands are not yet implemented, listed roughly in order of priority.
 | Command | Notes |
 |---|---|
 | `react-native gradle` | Upload sourcemaps from Android gradle builds |
-| `repos list` | List repositories for an organization |
 | `sourcemaps resolve` | Resolve sourcemap for a given line/column position |
 
 ### Not planned

@@ -69,6 +69,18 @@ pub struct ProjectInfo {
 
 #[derive(Debug, Deserialize)]
 #[allow(dead_code)]
+pub struct RepositoryInfo {
+    pub id: String,
+    pub name: String,
+    pub url: Option<String>,
+    pub provider: Option<serde_json::Value>,
+    pub status: Option<String>,
+    #[serde(alias = "dateCreated")]
+    pub date_created: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 pub struct OrganizationInfo {
     pub name: String,
     pub slug: String,
@@ -674,6 +686,10 @@ impl ApiClient {
 
     pub async fn list_projects(&self, org: &str) -> Result<Vec<ProjectInfo>> {
         self.get(&format!("organizations/{org}/projects/")).await
+    }
+
+    pub async fn list_repositories(&self, org: &str) -> Result<Vec<RepositoryInfo>> {
+        self.get(&format!("organizations/{org}/repos/")).await
     }
 
     pub async fn list_events(&self, org: &str, project: &str) -> Result<Vec<EventInfo>> {
