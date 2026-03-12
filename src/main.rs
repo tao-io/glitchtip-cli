@@ -674,6 +674,21 @@ enum SourcemapsCommand {
         #[arg(long = "dry-run")]
         dry_run: bool,
     },
+
+    /// Resolve a sourcemap for a given line and column position
+    Resolve {
+        /// Path to the sourcemap file
+        #[arg(required = true)]
+        path: PathBuf,
+
+        /// Line number (1-based)
+        #[arg(required = true)]
+        line: u32,
+
+        /// Column number (0-based or 1-based, typically 0-based for sourcemaps)
+        #[arg(required = true)]
+        column: u32,
+    },
 }
 
 #[tokio::main]
@@ -901,6 +916,10 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
                 dry_run,
             } => {
                 commands::sourcemaps::inject(&paths, &extensions, &ignore, dry_run)?;
+                Ok(())
+            }
+            SourcemapsCommand::Resolve { path, line, column } => {
+                commands::sourcemaps::resolve(&path, line, column)?;
                 Ok(())
             }
         },

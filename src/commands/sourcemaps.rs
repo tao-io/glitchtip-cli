@@ -774,3 +774,22 @@ mod tests {
         );
     }
 }
+
+pub fn resolve(path: &Path, line: u32, column: u32) -> Result<()> {
+    let content = std::fs::read(path)
+        .with_context(|| format!("Failed to read sourcemap: {}", path.display()))?;
+
+    let sm = sourcemap::decode_slice(&content)
+        .context("Failed to parse sourcemap")?;
+
+    let token = sm
+        .lookup_token(line.saturating_sub(1), column)
+        .context("Could not find matching token in sourcemap")?;
+
+    println!("Source: {}", token.get_source().unwrap_or("<unknown>"));
+    println!("Line: {}", token.get_src_line() + 1);
+    println!("Column: {}", token.get_src_col());
+    println!("Name: {}", token.get_name().unwrap_or("<none>"));
+
+    Ok(())
+}

@@ -71,6 +71,7 @@ project=my-project
 | `releases set-commits` | Supported | `--auto` for git discovery |
 | `sourcemaps upload` | Supported | Chunked upload with gzip |
 | `sourcemaps inject` | Supported | Inject debug IDs into source files and sourcemaps |
+| `sourcemaps resolve` | Supported | Resolve sourcemap for a given line/column position |
 | `deploys new` | Supported | |
 | `deploys list` | Supported | |
 | `send-event` | Supported | DSN auth, envelope protocol |
@@ -107,7 +108,6 @@ These commands are not yet implemented, listed roughly in order of priority.
 | Command | Notes |
 |---|---|
 | `react-native gradle` | Upload sourcemaps from Android gradle builds |
-| `sourcemaps resolve` | Resolve sourcemap for a given line/column position |
 
 ### Not planned
 
