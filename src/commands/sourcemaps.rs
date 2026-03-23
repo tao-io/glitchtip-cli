@@ -779,8 +779,7 @@ pub fn resolve(path: &Path, line: u32, column: u32) -> Result<()> {
     let content = std::fs::read(path)
         .with_context(|| format!("Failed to read sourcemap: {}", path.display()))?;
 
-    let sm = sourcemap::decode_slice(&content)
-        .context("Failed to parse sourcemap")?;
+    let sm = sourcemap::decode_slice(&content).context("Failed to parse sourcemap")?;
 
     let token = sm
         .lookup_token(line.saturating_sub(1), column)
