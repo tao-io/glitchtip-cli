@@ -2,8 +2,6 @@
 
 Open source CLI for [GlitchTip](https://glitchtip.com).
 
-> **Warning:** This project is not yet stable. The API and behavior may change without notice until version 1.0.
-
 ## Installation
 
 Download a binary from the [releases page](https://gitlab.com/glitchtip/glitchtip-cli/-/releases) or build from source:
