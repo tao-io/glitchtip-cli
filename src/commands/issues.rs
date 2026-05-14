@@ -3,6 +3,7 @@ use anyhow::{Context, Result, bail};
 use crate::api::ApiClient;
 use crate::api::client::IssueChanges;
 use crate::config::Config;
+use crate::utils::truncate_chars;
 
 pub async fn list(config: &Config) -> Result<()> {
     let org = config.get_org()?;
@@ -28,11 +29,7 @@ pub async fn list(config: &Config) -> Result<()> {
     );
     for issue in issues {
         let short_id = issue.short_id.as_deref().unwrap_or(&issue.id);
-        let title = if issue.title.len() > 48 {
-            format!("{}...", &issue.title[..45])
-        } else {
-            issue.title.clone()
-        };
+        let title = truncate_chars(&issue.title, 48);
         let status = issue.status.as_deref().unwrap_or("-");
         let level = issue.level.as_deref().unwrap_or("-");
         println!(
@@ -78,6 +75,20 @@ async fn update_status(
     let project = config.get_project()?;
 
     let filter_query = build_filter_query(ids, status, all)?;
+
+    if all {
+        use std::io::{self, Write};
+        eprintln!(
+            "Warning: --all will {action_label} every issue in {org}/{project}. This cannot be undone."
+        );
+        eprint!("Type the project slug to confirm: ");
+        io::stderr().flush()?;
+        let mut buf = String::new();
+        io::stdin().read_line(&mut buf)?;
+        if buf.trim() != project {
+            bail!("Confirmation did not match project slug; aborting.");
+        }
+    }
 
     let client = ApiClient::from_config(config)?;
     let changes = IssueChanges {

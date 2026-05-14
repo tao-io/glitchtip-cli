@@ -24,7 +24,6 @@ pub struct UploadOptions<'a> {
     pub extensions: &'a [String],
     pub ignore: &'a [String],
     pub validate: bool,
-    pub no_rewrite: bool,
 }
 
 pub async fn upload(config: &Config, opts: &UploadOptions<'_>) -> Result<()> {
@@ -95,7 +94,7 @@ pub async fn upload(config: &Config, opts: &UploadOptions<'_>) -> Result<()> {
     println!();
     println!("Upload complete: {uploaded} file(s) uploaded, {errors} error(s).");
 
-    if errors > 0 && !opts.no_rewrite {
+    if errors > 0 {
         anyhow::bail!("{errors} file(s) failed to upload");
     }
 
@@ -528,6 +527,24 @@ pub fn inject(
     Ok(())
 }
 
+pub fn resolve(path: &Path, line: u32, column: u32) -> Result<()> {
+    let content = std::fs::read(path)
+        .with_context(|| format!("Failed to read sourcemap: {}", path.display()))?;
+
+    let sm = sourcemap::decode_slice(&content).context("Failed to parse sourcemap")?;
+
+    let token = sm
+        .lookup_token(line.saturating_sub(1), column)
+        .context("Could not find matching token in sourcemap")?;
+
+    println!("Source: {}", token.get_source().unwrap_or("<unknown>"));
+    println!("Line: {}", token.get_src_line() + 1);
+    println!("Column: {}", token.get_src_col());
+    println!("Name: {}", token.get_name().unwrap_or("<none>"));
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -773,22 +790,4 @@ mod tests {
             "a94a8fe5-ccb1-5ba6-9c4c-0873d391e987"
         );
     }
-}
-
-pub fn resolve(path: &Path, line: u32, column: u32) -> Result<()> {
-    let content = std::fs::read(path)
-        .with_context(|| format!("Failed to read sourcemap: {}", path.display()))?;
-
-    let sm = sourcemap::decode_slice(&content).context("Failed to parse sourcemap")?;
-
-    let token = sm
-        .lookup_token(line.saturating_sub(1), column)
-        .context("Could not find matching token in sourcemap")?;
-
-    println!("Source: {}", token.get_source().unwrap_or("<unknown>"));
-    println!("Line: {}", token.get_src_line() + 1);
-    println!("Column: {}", token.get_src_col());
-    println!("Name: {}", token.get_name().unwrap_or("<none>"));
-
-    Ok(())
 }

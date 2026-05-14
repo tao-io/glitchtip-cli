@@ -473,10 +473,10 @@ dsn=https://key@glitchtip.example.com/1
         let content = "[auth]\ndsn=https://key@example.com/3\n";
         let sections = parse_ini(content);
         // Simulate what merge_ini_file does
-        if let Some(auth) = sections.get("auth") {
-            if let Some(dsn) = auth.get("dsn") {
-                config.dsn = Some(dsn.clone());
-            }
+        if let Some(auth) = sections.get("auth")
+            && let Some(dsn) = auth.get("dsn")
+        {
+            config.dsn = Some(dsn.clone());
         }
         assert_eq!(config.dsn.as_deref(), Some("https://key@example.com/3"));
     }
@@ -499,8 +499,8 @@ token_endpoint=https://example.com/token
         };
         let sections = parse_ini(content);
         // Simulate merge_ini_file oauth parsing
-        if let Some(oauth) = sections.get("oauth") {
-            if let (
+        if let Some(oauth) = sections.get("oauth")
+            && let (
                 Some(access_token),
                 Some(refresh_token),
                 Some(client_id),
@@ -512,18 +512,17 @@ token_endpoint=https://example.com/token
                 oauth.get("client_id"),
                 oauth.get("expires_at"),
                 oauth.get("token_endpoint"),
-            ) {
-                if let Ok(expires_at) = expires_at.parse::<u64>() {
-                    config.oauth = Some(OAuthTokens {
-                        access_token: access_token.clone(),
-                        refresh_token: refresh_token.clone(),
-                        client_id: client_id.clone(),
-                        expires_at,
-                        scopes: oauth.get("scopes").cloned().unwrap_or_default(),
-                        token_endpoint: token_endpoint.clone(),
-                    });
-                }
-            }
+            )
+            && let Ok(expires_at) = expires_at.parse::<u64>()
+        {
+            config.oauth = Some(OAuthTokens {
+                access_token: access_token.clone(),
+                refresh_token: refresh_token.clone(),
+                client_id: client_id.clone(),
+                expires_at,
+                scopes: oauth.get("scopes").cloned().unwrap_or_default(),
+                token_endpoint: token_endpoint.clone(),
+            });
         }
         let oauth = config.oauth.unwrap();
         assert_eq!(oauth.access_token, "abc123");

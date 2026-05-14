@@ -12,6 +12,17 @@ pub fn sha1_hex(data: &[u8]) -> String {
     hex
 }
 
+/// Truncate a string to at most `max_chars` characters, appending "..." if truncated.
+/// Safe on multi-byte boundaries (operates on chars, not bytes).
+pub fn truncate_chars(s: &str, max_chars: usize) -> String {
+    let count = s.chars().count();
+    if count <= max_chars {
+        return s.to_string();
+    }
+    let head: String = s.chars().take(max_chars.saturating_sub(3)).collect();
+    format!("{head}...")
+}
+
 pub fn gzip_compress(data: &[u8]) -> Result<Vec<u8>> {
     use std::io::Write;
     let mut encoder = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::default());

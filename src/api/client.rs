@@ -384,6 +384,10 @@ impl ApiClient {
     pub fn from_config(config: &Config) -> Result<Self> {
         let client = reqwest::Client::builder()
             .user_agent(format!("glitchtip-cli/{}", env!("CARGO_PKG_VERSION")))
+            .connect_timeout(std::time::Duration::from_secs(30))
+            // No total timeout: chunk uploads of large debug files can take
+            // many minutes on slow links. Connect-timeout still protects
+            // against unreachable hosts.
             .build()
             .context("Failed to create HTTP client")?;
 
@@ -392,6 +396,21 @@ impl ApiClient {
             base_url: config.url.trim_end_matches('/').to_string(),
             auth_token: config.auth_token.clone(),
         })
+    }
+
+    /// Check that a URL returned by the server (e.g. for chunk upload) shares
+    /// the same host as our configured base_url. Prevents auth-token exfiltration
+    /// if a compromised server returns a third-party upload URL.
+    fn same_origin(&self, url: &str) -> bool {
+        let target = match reqwest::Url::parse(url) {
+            Ok(u) => u,
+            Err(_) => return false,
+        };
+        let base = match reqwest::Url::parse(&self.base_url) {
+            Ok(u) => u,
+            Err(_) => return false,
+        };
+        target.host_str() == base.host_str() && target.scheme() == base.scheme()
     }
 
     fn default_headers(&self) -> Result<HeaderMap> {
@@ -523,6 +542,13 @@ impl ApiClient {
     }
 
     pub async fn upload_chunk(&self, url: &str, data: Vec<u8>, checksum: &str) -> Result<()> {
+        if !self.same_origin(url) {
+            bail!(
+                "Refusing to upload to {url}: host does not match configured GlitchTip URL {}. \
+                 This protects your auth token from being sent to a third party.",
+                self.base_url
+            );
+        }
         let headers = self.default_headers()?;
         let part = reqwest::multipart::Part::bytes(data).file_name(checksum.to_string());
         let form = reqwest::multipart::Form::new().part("file_gzip", part);

@@ -3,6 +3,7 @@ use anyhow::{Context, Result};
 use crate::api::ApiClient;
 use crate::api::client::LogFilter;
 use crate::config::Config;
+use crate::utils::truncate_chars;
 
 pub struct ListOptions<'a> {
     pub level: &'a [String],
@@ -40,11 +41,7 @@ pub async fn list(config: &Config, opts: &ListOptions<'_>) -> Result<()> {
 
     println!("{:<28} {:<8} {:<20} Body", "Timestamp", "Level", "Service");
     for entry in logs {
-        let body = if entry.body.len() > 80 {
-            format!("{}...", &entry.body[..77])
-        } else {
-            entry.body.clone()
-        };
+        let body = truncate_chars(&entry.body, 80);
         println!(
             "{:<28} {:<8} {:<20} {}",
             entry.timestamp, entry.level, entry.service, body

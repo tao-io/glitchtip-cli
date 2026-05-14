@@ -73,12 +73,6 @@ pub fn check(path: &Path, ty: Option<&str>, json: bool) -> Result<()> {
 pub struct UploadOptions<'a> {
     pub paths: &'a [PathBuf],
     pub ty: Option<&'a str>,
-    #[allow(dead_code)] // Reserved for feature filtering
-    pub no_unwind: bool,
-    #[allow(dead_code)] // Reserved for feature filtering
-    pub no_debug: bool,
-    #[allow(dead_code)] // Reserved for feature filtering
-    pub no_sources: bool,
     pub wait: bool,
 }
 

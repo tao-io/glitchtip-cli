@@ -21,7 +21,7 @@ async fn execute_token_login(config: &Config, global: bool) -> Result<()> {
         "If you do not yet have a token ready we can bring up a browser for you\nto create a token now."
     );
     println!();
-    println!("Sentry server: {}", config.url.trim_end_matches('/'));
+    println!("GlitchTip server: {}", config.url.trim_end_matches('/'));
     println!();
 
     if prompt_yes_no("Open browser now?")? {
@@ -76,6 +76,9 @@ async fn execute_token_login(config: &Config, global: bool) -> Result<()> {
 }
 
 async fn execute_oauth_login(config: &Config, _global: bool) -> Result<()> {
+    // OAuth tokens are always saved to the global config path so the daemon-free
+    // refresh logic in main.rs can locate them on startup. --global is accepted
+    // for symmetry with the token login flow but has no effect here.
     let base_url = config.url.trim_end_matches('/');
     println!("Logging in via OAuth to {base_url}");
     println!();

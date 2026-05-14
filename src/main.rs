@@ -13,8 +13,8 @@ use clap::{Parser, Subcommand};
 #[derive(Parser)]
 #[command(name = "glitchtip-cli", about = "CLI for GlitchTip", version)]
 struct Cli {
-    /// Sentry/GlitchTip server URL
-    #[arg(long = "url", env = "SENTRY_URL")]
+    /// GlitchTip server URL
+    #[arg(long = "url", global = true, env = "SENTRY_URL")]
     url: Option<String>,
 
     /// Auth token
@@ -33,10 +33,6 @@ struct Cli {
     #[arg(long = "log-level", global = true, env = "SENTRY_LOG_LEVEL")]
     log_level: Option<String>,
 
-    /// Suppress all output
-    #[arg(long, global = true)]
-    quiet: bool,
-
     #[command(subcommand)]
     command: Commands,
 }
@@ -45,7 +41,7 @@ struct Cli {
 enum Commands {
     /// Set up authentication token
     Login {
-        /// Store token globally (~/.sentryclirc) instead of locally
+        /// Store token globally (~/.config/glitchtip-cli/config) instead of locally
         #[arg(long, short)]
         global: bool,
 
@@ -393,18 +389,6 @@ enum DebugFilesCommand {
         #[arg(long, short = 't')]
         r#type: Option<String>,
 
-        /// Do not scan for stack unwinding information
-        #[arg(long = "no-unwind")]
-        no_unwind: bool,
-
-        /// Do not scan for debugging information
-        #[arg(long = "no-debug")]
-        no_debug: bool,
-
-        /// Do not scan for source information
-        #[arg(long = "no-sources")]
-        no_sources: bool,
-
         /// Wait for server to fully process uploaded files
         #[arg(long)]
         wait: bool,
@@ -650,10 +634,6 @@ enum SourcemapsCommand {
         /// Enable basic sourcemap validation
         #[arg(long)]
         validate: bool,
-
-        /// Disable sourcemap rewriting
-        #[arg(long = "no-rewrite")]
-        no_rewrite: bool,
     },
 
     /// Inject debug IDs into source files and sourcemaps
@@ -754,7 +734,10 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
                     config.oauth = Some(new_tokens);
                 }
                 Err(e) => {
-                    eprintln!("Warning: failed to refresh OAuth token: {e}");
+                    eprintln!(
+                        "Warning: failed to refresh OAuth token: {e}\n\
+                         Run `glitchtip-cli login --method oauth` to re-authenticate."
+                    );
                 }
             }
         }
@@ -894,7 +877,6 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
                 extensions,
                 ignore,
                 validate,
-                no_rewrite,
             } => {
                 let opts = commands::sourcemaps::UploadOptions {
                     paths: &paths,
@@ -905,7 +887,6 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
                     extensions: &extensions,
                     ignore: &ignore,
                     validate,
-                    no_rewrite,
                 };
                 commands::sourcemaps::upload(&config, &opts).await
             }
@@ -984,17 +965,11 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
             DebugFilesCommand::Upload {
                 paths,
                 r#type,
-                no_unwind,
-                no_debug,
-                no_sources,
                 wait,
             } => {
                 let opts = commands::debug_files::UploadOptions {
                     paths: &paths,
                     ty: r#type.as_deref(),
-                    no_unwind,
-                    no_debug,
-                    no_sources,
                     wait,
                 };
                 commands::debug_files::upload(&config, &opts).await

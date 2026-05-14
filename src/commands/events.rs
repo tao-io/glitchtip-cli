@@ -2,6 +2,7 @@ use anyhow::{Context, Result};
 
 use crate::api::ApiClient;
 use crate::config::Config;
+use crate::utils::truncate_chars;
 
 pub async fn list(config: &Config, show_user: bool, show_tags: bool) -> Result<()> {
     let org = config.get_org()?;
@@ -29,11 +30,7 @@ pub async fn list(config: &Config, show_user: bool, show_tags: bool) -> Result<(
     println!("{header}");
 
     for event in &events {
-        let title = if event.title.len() > 48 {
-            format!("{}...", &event.title[..45])
-        } else {
-            event.title.clone()
-        };
+        let title = truncate_chars(&event.title, 48);
 
         let mut row = format!(
             "{:<36} {:<24} {:<50}",
