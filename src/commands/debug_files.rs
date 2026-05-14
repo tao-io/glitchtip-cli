@@ -419,36 +419,12 @@ fn find_ids_for_type(
 
     // Quick extension-based filtering per type
     match ty {
-        DifType::Dsym => {
-            if ext == Some("class") {
-                return vec![];
-            }
-        }
-        DifType::Pe => {
-            if ext != Some("exe") && ext != Some("dll") {
-                return vec![];
-            }
-        }
-        DifType::Pdb | DifType::PortablePdb => {
-            if ext != Some("pdb") {
-                return vec![];
-            }
-        }
-        DifType::SourceBundle => {
-            if ext != Some("zip") {
-                return vec![];
-            }
-        }
-        DifType::Breakpad => {
-            if ext != Some("sym") {
-                return vec![];
-            }
-        }
-        DifType::Proguard => {
-            if ext != Some("txt") {
-                return vec![];
-            }
-        }
+        DifType::Dsym if ext == Some("class") => return vec![],
+        DifType::Pe if ext != Some("exe") && ext != Some("dll") => return vec![],
+        DifType::Pdb | DifType::PortablePdb if ext != Some("pdb") => return vec![],
+        DifType::SourceBundle if ext != Some("zip") => return vec![],
+        DifType::Breakpad if ext != Some("sym") => return vec![],
+        DifType::Proguard if ext != Some("txt") => return vec![],
         _ => {}
     }
 
