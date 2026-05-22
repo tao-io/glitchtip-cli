@@ -1,0 +1,19 @@
+{
+  "name": "@glitchtip/cli-linux-x64",
+  "version": "1.0.0",
+  "description": "Linux x64 binary for @glitchtip/cli",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://gitlab.com/glitchtip/glitchtip-cli.git"
+  },
+  "files": [
+    "bin/"
+  ],
+  "os": [
+    "linux"
+  ],
+  "cpu": [
+    "x64"
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "name": "@glitchtip/cli",
+  "version": "1.0.0",
+  "description": "Open source CLI for GlitchTip",
+  "license": "MIT",
+  "homepage": "https://glitchtip.com",
+  "repository": {
+    "type": "git",
+    "url": "https://gitlab.com/glitchtip/glitchtip-cli.git"
+  },
+  "bugs": {
+    "url": "https://gitlab.com/glitchtip/glitchtip/-/issues"
+  },
+  "keywords": [
+    "glitchtip",
+    "cli",
+    "error-tracking",
+    "sourcemaps",
+    "devops"
+  ],
+  "bin": {
+    "glitchtip-cli": "bin/glitchtip-cli.js"
+  },
+  "files": [
+    "bin/",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "optionalDependencies": {
+    "@glitchtip/cli-linux-x64": "1.0.0",
+    "@glitchtip/cli-linux-arm64": "1.0.0",
+    "@glitchtip/cli-darwin-arm64": "1.0.0",
+    "@glitchtip/cli-win32-x64": "1.0.0"
+  }
+}

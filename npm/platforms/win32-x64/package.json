@@ -1,0 +1,19 @@
+{
+  "name": "@glitchtip/cli-win32-x64",
+  "version": "1.0.0",
+  "description": "Windows x64 binary for @glitchtip/cli",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://gitlab.com/glitchtip/glitchtip-cli.git"
+  },
+  "files": [
+    "bin/"
+  ],
+  "os": [
+    "win32"
+  ],
+  "cpu": [
+    "x64"
+  ]
+}

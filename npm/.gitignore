@@ -1,0 +1,8 @@
+# Populated at release time by release.sh
+platforms/*/bin/
+cli/README.md
+cli/LICENSE
+
+# Local test installs
+**/node_modules/
+**/package-lock.json
