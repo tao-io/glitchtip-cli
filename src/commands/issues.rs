@@ -53,7 +53,7 @@ fn build_filter_query(ids: &[u64], status: Option<&str>, all: bool) -> Result<St
     }
 
     if let Some(s) = status {
-        parts.push(format!("status={s}"));
+        parts.push(format!("query={}", urlencoding::encode(&format!("is:{s}"))));
     }
 
     if parts.is_empty() {
@@ -119,4 +119,25 @@ pub async fn unresolve(
     all: bool,
 ) -> Result<()> {
     update_status(config, ids, status, all, "unresolved", "unresolve").await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::build_filter_query;
+
+    #[test]
+    fn status_uses_supported_search_filter() {
+        assert_eq!(
+            build_filter_query(&[42], Some("unresolved"), false).unwrap(),
+            "id=42&query=is%3Aunresolved"
+        );
+    }
+
+    #[test]
+    fn status_filter_is_encoded() {
+        assert_eq!(
+            build_filter_query(&[], Some("unresolved&project=99"), false).unwrap(),
+            "query=is%3Aunresolved%26project%3D99"
+        );
+    }
 }
