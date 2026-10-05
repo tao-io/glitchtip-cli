@@ -803,7 +803,19 @@ impl ApiClient {
         filter_query: &str,
         changes: &IssueChanges,
     ) -> Result<()> {
-        let path = format!("projects/{org}/{project}/issues/?{filter_query}");
+        #[derive(Deserialize)]
+        struct ProjectScope {
+            id: serde_json::Value,
+        }
+        let scope: ProjectScope = self.get(&format!("projects/{org}/{project}/")).await?;
+        let project_id = match &scope.id {
+            serde_json::Value::String(id) => id.parse::<u64>()?,
+            serde_json::Value::Number(id) => id.as_u64().context("Invalid project ID")?,
+            _ => bail!("Invalid project ID"),
+        };
+        // GlitchTip exposes bulk mutations at the organization endpoint.
+        // Keep the selected project in the filter, including for --all.
+        let path = format!("organizations/{org}/issues/?project={project_id}&{filter_query}");
         let _: serde_json::Value = self.put(&path, changes).await?;
         Ok(())
     }
@@ -878,11 +890,21 @@ mod tests {
         let mut server = Server::new_async().await;
         let url = server.url();
 
-        let _m = server
+        let project = server
+            .mock("GET", "/api/0/projects/my-org/my-project/")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(r#"{"id": "7"}"#)
+            .create_async()
+            .await;
+        let mutation = server
             .mock(
                 "PUT",
-                "/api/0/projects/my-org/my-project/issues/?id=42&id=43",
+                "/api/0/organizations/my-org/issues/?project=7&id=42&id=43",
             )
+            .match_body(mockito::Matcher::JsonString(
+                r#"{"status":"resolved"}"#.to_string(),
+            ))
             .with_status(200)
             .with_header("content-type", "application/json")
             .with_body(r#"{"status": "resolved"}"#)
@@ -906,6 +928,8 @@ mod tests {
             .update_issues("my-org", "my-project", "id=42&id=43", &changes)
             .await
             .unwrap();
+        project.assert_async().await;
+        mutation.assert_async().await;
     }
 
     #[tokio::test]
